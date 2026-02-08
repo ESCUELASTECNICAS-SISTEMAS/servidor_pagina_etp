@@ -1,0 +1,98 @@
+{
+  "info": {
+    "name": "Courses API - Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection with requests for Courses endpoints (create, list, get, update, delete, associate thumbnail)."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://servidorpaginaetp-production.up.railway.app"
+    },
+    {
+      "key": "courseId",
+      "value": "1"
+    },
+    {
+      "key": "thumbnailId",
+      "value": "12"
+    }
+  ],
+  "item": [
+    {
+      "name": "List Courses",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/courses",
+          "host": ["{{baseUrl}}"],
+          "path": ["courses"]
+        }
+      }
+    },
+    {
+      "name": "Get Course by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/courses/{{courseId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["courses","{{courseId}}"]
+        }
+      }
+    },
+    {
+      "name": "Create Course (Apoyo Administrativo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Carrera: Apoyo Administrativo\",\n  \"subtitle\": \"Formación en tareas administrativas\",\n  \"description\": \"Programa breve de ejemplo...\",\n  \"type\": \"apoyo_administrativo\",\n  \"thumbnail_media_id\": {{thumbnailId}},\n  \"slug\": \"apoyo-administrativo\",\n  \"published\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/courses",
+          "host": ["{{baseUrl}}"],
+          "path": ["courses"]
+        }
+      }
+    },
+    {
+      "name": "Update Course (associate thumbnail)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"thumbnail_media_id\": {{thumbnailId}}\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/courses/{{courseId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["courses","{{courseId}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete (soft) Course",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/courses/{{courseId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["courses","{{courseId}}"]
+        }
+      }
+    }
+  ]
+}
