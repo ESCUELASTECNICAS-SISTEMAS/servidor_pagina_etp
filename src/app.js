@@ -1,9 +1,27 @@
 const express = require('express');
 const morgan = require('morgan');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+
+// CORS: allow production front and local dev
+const allowedOrigins = [
+	'https://etp-escuelas-tecnicas-del-peru-production.up.railway.app',
+	'https://servidorpaginaetp-production.up.railway.app',
+	'http://localhost:3000'
+];
+app.use(cors({
+	origin: function(origin, callback) {
+		// allow requests with no origin (like mobile apps or curl)
+		if (!origin) return callback(null, true);
+		if (allowedOrigins.indexOf(origin) !== -1) {
+			return callback(null, true);
+		}
+		return callback(new Error('CORS policy: origin not allowed'));
+	}
+}));
 
 // request logging to stdout (appears in Railway "Logs")
 app.use(morgan('combined'));
