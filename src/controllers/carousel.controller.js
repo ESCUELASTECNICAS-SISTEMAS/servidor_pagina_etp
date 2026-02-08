@@ -2,14 +2,15 @@ const db = require('../models');
 
 exports.list = async (req, res) => {
   try {
-    let activeFilter = true;
+    // If ?active=true|false is provided, filter by active flag; otherwise return all slides.
+    let where = {};
     if (typeof req.query.active !== 'undefined') {
       const v = req.query.active.toString().toLowerCase();
-      activeFilter = !(v === 'false' || v === '0');
+      const activeFilter = !(v === 'false' || v === '0');
+      where = { active: activeFilter };
     }
 
-    const where = { active: activeFilter };
-    const items = await db.CarouselSlide.findAll({ where, include: [{ model: db.Media, as: 'media', attributes: ['id','url','alt_text'] }], attributes: ['id','media_id','title','order_index','active'] });
+    const items = await db.CarouselSlide.findAll({ where, include: [{ model: db.Media, as: 'media', attributes: ['id','url','alt_text'] }], attributes: ['id','media_id','title','order_index','active'], order: [['order_index','ASC']] });
     return res.json(items);
   } catch (err) {
     console.error(err);
