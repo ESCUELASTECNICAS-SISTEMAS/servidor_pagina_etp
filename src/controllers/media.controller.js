@@ -2,14 +2,9 @@ const db = require('../models');
 
 exports.list = async (req, res) => {
   try {
-    let activeFilter = true;
-    if (typeof req.query.active !== 'undefined') {
-      const v = req.query.active.toString().toLowerCase();
-      activeFilter = !(v === 'false' || v === '0');
-    }
-
-    const where = { active: activeFilter };
-    const items = await db.Media.findAll({ where, attributes: ['id','url','alt_text','active','created_at'] });
+    // Return all media (both active and inactive) as a single flat list.
+    const attrs = ['id','url','alt_text','active','created_at'];
+    const items = await db.Media.findAll({ attributes: attrs, order: [['created_at','DESC']] });
     return res.json(items);
   } catch (err) {
     console.error(err);
