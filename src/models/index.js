@@ -4,11 +4,15 @@ const Sequelize = require('sequelize');
 const basename = path.basename(__filename);
 const db = {};
 
-require('dotenv').config();
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
-  throw new Error('Please set DATABASE_URL in .env');
+  throw new Error('Please set DATABASE_URL as an environment variable (e.g. DATABASE_URL in Railway)');
 }
+
 const sequelize = new Sequelize(DATABASE_URL, { dialect: 'postgres', logging: false });
 
 fs.readdirSync(__dirname)

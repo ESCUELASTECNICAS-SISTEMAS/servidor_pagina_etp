@@ -1,8 +1,12 @@
 const express = require('express');
+const morgan = require('morgan');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+
+// request logging to stdout (appears in Railway "Logs")
+app.use(morgan('combined'));
 
 // routes
 const authRoutes = require('./routes/auth.routes');
