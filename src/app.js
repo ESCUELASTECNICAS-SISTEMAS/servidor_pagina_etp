@@ -10,7 +10,8 @@ app.use(express.json());
 const allowedOrigins = [
 	'https://etp-escuelas-tecnicas-del-peru-production.up.railway.app',
 	'https://servidorpaginaetp-production.up.railway.app',
-	'http://localhost:3000'
+	'http://localhost:3000',
+    'http://localhost:5173'
 ];
 app.use(cors({
 	origin: function(origin, callback) {
