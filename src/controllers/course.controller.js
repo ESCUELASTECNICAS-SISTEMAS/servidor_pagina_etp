@@ -71,12 +71,15 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { title, subtitle, description, type, thumbnail_media_id, slug, published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario } = req.body;
+    console.debug('create course body:', req.body);
     if (!title || !type) return res.status(400).json({ message: 'title and type required' });
     const course = await db.Course.create({ title, subtitle, description, type, thumbnail_media_id, slug, published: !!published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario });
     return res.status(201).json(course);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'server error' });
+    // Return error message/details to help debugging in development
+    const details = err && err.errors ? err.errors.map(e => e.message) : null;
+    return res.status(500).json({ message: 'server error', error: err.message, details });
   }
 };
 
