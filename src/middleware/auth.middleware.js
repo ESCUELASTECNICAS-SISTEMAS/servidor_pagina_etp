@@ -23,7 +23,9 @@ async function authenticate(req, res, next) {
 
 function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ message: 'not authenticated' });
-  if (req.user.role !== 'admin') return res.status(403).json({ message: 'admin required' });
+  // accept english 'admin' and spanish 'administrador' (case-insensitive)
+  const role = (req.user.role || '').toString().toLowerCase();
+  if (!role.includes('admin')) return res.status(403).json({ message: 'admin required' });
   return next();
 }
 
