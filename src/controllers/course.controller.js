@@ -126,7 +126,8 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad } = req.body;
+    let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     const course = await db.Course.findByPk(id);
     if (!course) return res.status(404).json({ message: 'not found' });
 
@@ -146,7 +147,12 @@ exports.update = async (req, res) => {
     if (typeof mision !== 'undefined') updates.mision = mision;
     if (typeof vision !== 'undefined') updates.vision = vision;
     if (typeof modalidad !== 'undefined') updates.modalidad = modalidad;
-    if (typeof temario !== 'undefined') updates.temario = temario;
+    if (typeof temario !== 'undefined') {
+      let t = temario;
+      if (Array.isArray(t) || (t && typeof t === 'object')) t = JSON.stringify(t);
+      if (typeof t === 'string' && t.trim() === '') t = undefined;
+      if (typeof t !== 'undefined') updates.temario = t;
+    }
     if (typeof active !== 'undefined') updates.active = !!active;
 
     await course.update(updates);
