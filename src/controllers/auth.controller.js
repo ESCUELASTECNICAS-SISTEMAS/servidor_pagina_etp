@@ -32,7 +32,9 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    console.log('register body:', req.body);
+    const body = req.body || {};
+    const { name, email, password, role } = body;
     if (!email || !password) return res.status(400).json({ message: 'email and password required' });
 
     const existing = await db.User.findOne({ where: { email } });

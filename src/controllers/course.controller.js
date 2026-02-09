@@ -70,7 +70,7 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    console.debug('create course body:', req.body);
+    console.log('create course body:', req.body);
     const body = req.body || {};
     const san = v => (typeof v === 'string' ? (v.trim() === '' ? undefined : v) : v);
     const title = san(body.title);
