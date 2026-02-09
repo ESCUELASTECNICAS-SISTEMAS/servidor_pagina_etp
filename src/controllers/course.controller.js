@@ -30,7 +30,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'thumbnail_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'thumbnail_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -52,7 +52,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -70,9 +70,9 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, hours, duration, grado, registro, perfil_egresado, mision, vision } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, slug, published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario } = req.body;
     if (!title || !type) return res.status(400).json({ message: 'title and type required' });
-    const course = await db.Course.create({ title, subtitle, description, type, thumbnail_media_id, slug, published: !!published, hours, duration, grado, registro, perfil_egresado, mision, vision });
+    const course = await db.Course.create({ title, subtitle, description, type, thumbnail_media_id, slug, published: !!published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario });
     return res.status(201).json(course);
   } catch (err) {
     console.error(err);
@@ -83,7 +83,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario } = req.body;
     const course = await db.Course.findByPk(id);
     if (!course) return res.status(404).json({ message: 'not found' });
 
@@ -102,6 +102,8 @@ exports.update = async (req, res) => {
     if (typeof perfil_egresado !== 'undefined') updates.perfil_egresado = perfil_egresado;
     if (typeof mision !== 'undefined') updates.mision = mision;
     if (typeof vision !== 'undefined') updates.vision = vision;
+    if (typeof modalidad !== 'undefined') updates.modalidad = modalidad;
+    if (typeof temario !== 'undefined') updates.temario = temario;
     if (typeof active !== 'undefined') updates.active = !!active;
 
     await course.update(updates);

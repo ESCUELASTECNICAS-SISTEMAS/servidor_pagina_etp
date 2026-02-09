@@ -15,6 +15,8 @@ module.exports = (sequelize, DataTypes) => {
     perfil_egresado: { type: DataTypes.TEXT },
     mision: { type: DataTypes.TEXT },
     vision: { type: DataTypes.TEXT },
+    modalidad: { type: DataTypes.STRING(64) },
+    temario: { type: DataTypes.TEXT },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
   }, {
