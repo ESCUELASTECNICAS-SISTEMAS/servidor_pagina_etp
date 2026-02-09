@@ -70,10 +70,50 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario } = req.body;
     console.debug('create course body:', req.body);
-    if (!title || !type) return res.status(400).json({ message: 'title and type required' });
-    const course = await db.Course.create({ title, subtitle, description, type, thumbnail_media_id, slug, published: !!published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario });
+    const body = req.body || {};
+    const san = v => (typeof v === 'string' ? (v.trim() === '' ? undefined : v) : v);
+    const title = san(body.title);
+    const subtitle = san(body.subtitle);
+    const description = san(body.description);
+    const type = san(body.type);
+    const slug = san(body.slug);
+    const duration = san(body.duration);
+    const grado = san(body.grado);
+    const registro = san(body.registro);
+    const perfil_egresado = san(body.perfil_egresado);
+    const mision = san(body.mision);
+    const vision = san(body.vision);
+    const modalidad = san(body.modalidad);
+
+    let temario = body.temario;
+    if (Array.isArray(temario)) temario = JSON.stringify(temario);
+    if (typeof temario === 'string' && temario.trim() === '') temario = undefined;
+
+    const missing = [];
+    if (!title) missing.push('title');
+    if (!type) missing.push('type');
+    if (missing.length) return res.status(400).json({ message: 'missing required fields', missing });
+
+    const payload = {};
+    payload.title = title;
+    if (typeof subtitle !== 'undefined') payload.subtitle = subtitle;
+    if (typeof description !== 'undefined') payload.description = description;
+    payload.type = type;
+    if (typeof body.thumbnail_media_id !== 'undefined') payload.thumbnail_media_id = body.thumbnail_media_id;
+    if (typeof slug !== 'undefined') payload.slug = slug;
+    if (typeof body.published !== 'undefined') payload.published = !!body.published;
+    if (typeof body.hours !== 'undefined') payload.hours = body.hours;
+    if (typeof duration !== 'undefined') payload.duration = duration;
+    if (typeof grado !== 'undefined') payload.grado = grado;
+    if (typeof registro !== 'undefined') payload.registro = registro;
+    if (typeof perfil_egresado !== 'undefined') payload.perfil_egresado = perfil_egresado;
+    if (typeof mision !== 'undefined') payload.mision = mision;
+    if (typeof vision !== 'undefined') payload.vision = vision;
+    if (typeof modalidad !== 'undefined') payload.modalidad = modalidad;
+    if (typeof temario !== 'undefined') payload.temario = temario;
+
+    const course = await db.Course.create(payload);
     return res.status(201).json(course);
   } catch (err) {
     console.error(err);
