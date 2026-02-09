@@ -1,14 +1,16 @@
 const db = require('../models');
 
 // Includes comunes para traer relaciones
-const getIncludes = () => [
-  { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
-  { model: db.Docente, as: 'docentes', attributes: ['id', 'nombre', 'especialidad', 'bio', 'email'], through: { attributes: ['rol'] }, include: [{ model: db.Media, as: 'foto', attributes: ['id', 'url', 'alt_text'] }] },
-  { model: db.CourseSchedule, as: 'schedules', attributes: ['id', 'dia', 'turno', 'hora_inicio', 'hora_fin', 'aula'], where: { active: true }, required: false },
-  { model: db.Certificado, as: 'certificados', attributes: ['id', 'titulo', 'descripcion', 'institucion_emisora', 'orden'], where: { active: true }, required: false },
-  { model: db.Seminario, as: 'seminarios', attributes: ['id', 'titulo', 'descripcion', 'fecha', 'duracion_horas', 'orden'], where: { active: true }, required: false },
-  { model: db.Convenio, as: 'convenios', attributes: ['id', 'institucion', 'descripcion', 'url', 'orden'], where: { active: true }, required: false, include: [{ model: db.Media, as: 'logo', attributes: ['id', 'url', 'alt_text'] }] }
-];
+const getIncludes = () => {
+  return [
+    { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
+    { model: db.Docente, as: 'docentes', attributes: ['id', 'nombre', 'especialidad', 'bio', 'email'], through: { attributes: ['rol'] }, include: [{ model: db.Media, as: 'foto', attributes: ['id', 'url', 'alt_text'] }] },
+    { model: db.CourseSchedule, as: 'schedules', attributes: ['id', 'dia', 'turno', 'hora_inicio', 'hora_fin', 'aula'], required: false },
+    { model: db.Certificado, as: 'certificados', attributes: ['id', 'titulo', 'descripcion', 'institucion_emisora', 'orden', 'active'], required: false },
+    { model: db.Seminario, as: 'seminarios', attributes: ['id', 'titulo', 'descripcion', 'fecha', 'duracion_horas', 'orden'], required: false },
+    { model: db.Convenio, as: 'convenios', attributes: ['id', 'institucion', 'descripcion', 'url', 'orden'], required: false, include: [{ model: db.Media, as: 'logo', attributes: ['id', 'url', 'alt_text'] }] }
+  ];
+};
 
 exports.list = async (req, res) => {
   try {
@@ -25,12 +27,20 @@ exports.list = async (req, res) => {
       where.active = true;
     }
 
+    const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
       attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'thumbnail_media_id', 'active', 'created_at'],
-      include: getIncludes()
+      include: getIncludes(includeInactive)
     });
-    return res.json(courses);
+    const out = courses.map(c => {
+      const obj = c.toJSON();
+      if (Array.isArray(obj.certificados)) {
+        obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
+      }
+      return obj;
+    });
+    return res.json(out);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error' });
@@ -43,11 +53,15 @@ exports.getById = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
       attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'active', 'created_at'],
-      include: getIncludes()
+      include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
     if (course.active === false && !includeInactive) return res.status(404).json({ message: 'not found' });
-    return res.json(course);
+    const obj = course.toJSON();
+    if (Array.isArray(obj.certificados)) {
+      obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
+    }
+    return res.json(obj);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error' });
