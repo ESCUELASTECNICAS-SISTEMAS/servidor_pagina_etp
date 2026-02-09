@@ -12,14 +12,6 @@ module.exports = (sequelize, DataTypes) => {
     duration: { type: DataTypes.STRING(128) },
     grado: { type: DataTypes.STRING(128) },
     registro: { type: DataTypes.STRING(512) },
-    horarios: { type: DataTypes.TEXT },
-    dias: { type: DataTypes.STRING(255) },
-    turnos: { type: DataTypes.STRING(255) },
-    schedules: { type: DataTypes.JSON },
-    docente: { type: DataTypes.STRING(512) },
-    certificados: { type: DataTypes.TEXT },
-    seminarios: { type: DataTypes.TEXT },
-    convenios: { type: DataTypes.TEXT },
     perfil_egresado: { type: DataTypes.TEXT },
     mision: { type: DataTypes.TEXT },
     vision: { type: DataTypes.TEXT },
@@ -32,6 +24,11 @@ module.exports = (sequelize, DataTypes) => {
 
   Course.associate = function(models) {
     Course.belongsTo(models.Media, { foreignKey: 'thumbnail_media_id', as: 'thumbnail' });
+    Course.belongsToMany(models.Docente, { through: models.CourseDocente, foreignKey: 'course_id', otherKey: 'docente_id', as: 'docentes' });
+    Course.hasMany(models.CourseSchedule, { foreignKey: 'course_id', as: 'schedules' });
+    Course.hasMany(models.Certificado, { foreignKey: 'course_id', as: 'certificados' });
+    Course.hasMany(models.Seminario, { foreignKey: 'course_id', as: 'seminarios' });
+    Course.hasMany(models.Convenio, { foreignKey: 'course_id', as: 'convenios' });
   };
 
   return Course;
