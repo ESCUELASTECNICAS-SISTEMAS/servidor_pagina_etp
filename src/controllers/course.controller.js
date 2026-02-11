@@ -30,7 +30,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'thumbnail_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'modulos', 'thumbnail_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -52,7 +52,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'modulos', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -90,6 +90,10 @@ exports.create = async (req, res) => {
     if (Array.isArray(temario)) temario = JSON.stringify(temario);
     if (typeof temario === 'string' && temario.trim() === '') temario = undefined;
 
+    let modulos = body.modulos;
+    if (Array.isArray(modulos) || (modulos && typeof modulos === 'object')) modulos = JSON.stringify(modulos);
+    if (typeof modulos === 'string' && modulos.trim() === '') modulos = undefined;
+
     const missing = [];
     if (!title) missing.push('title');
     if (!type) missing.push('type');
@@ -112,6 +116,7 @@ exports.create = async (req, res) => {
     if (typeof vision !== 'undefined') payload.vision = vision;
     if (typeof modalidad !== 'undefined') payload.modalidad = modalidad;
     if (typeof temario !== 'undefined') payload.temario = temario;
+    if (typeof modulos !== 'undefined') payload.modulos = modulos;
 
     const course = await db.Course.create(payload);
     return res.status(201).json(course);
@@ -128,6 +133,7 @@ exports.update = async (req, res) => {
     const { id } = req.params;
     const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad } = req.body;
     let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
+    let modulos = req.body && typeof req.body.modulos !== 'undefined' ? req.body.modulos : undefined;
     const course = await db.Course.findByPk(id);
     if (!course) return res.status(404).json({ message: 'not found' });
 
@@ -152,6 +158,12 @@ exports.update = async (req, res) => {
       if (Array.isArray(t) || (t && typeof t === 'object')) t = JSON.stringify(t);
       if (typeof t === 'string' && t.trim() === '') t = undefined;
       if (typeof t !== 'undefined') updates.temario = t;
+    }
+    if (typeof modulos !== 'undefined') {
+      let m = modulos;
+      if (Array.isArray(m) || (m && typeof m === 'object')) m = JSON.stringify(m);
+      if (typeof m === 'string' && m.trim() === '') m = undefined;
+      if (typeof m !== 'undefined') updates.modulos = m;
     }
     if (typeof active !== 'undefined') updates.active = !!active;
 
