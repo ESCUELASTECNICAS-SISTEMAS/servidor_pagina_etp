@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
     vision: { type: DataTypes.TEXT },
     modalidad: { type: DataTypes.STRING(64) },
     temario: { type: DataTypes.TEXT },
+    modulos: { type: DataTypes.JSON },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
   }, {
