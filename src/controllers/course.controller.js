@@ -70,20 +70,64 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario } = req.body;
-    if (!title || !type) return res.status(400).json({ message: 'title and type required' });
-    const course = await db.Course.create({ title, subtitle, description, type, thumbnail_media_id, slug, published: !!published, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario });
+    console.log('create course body:', req.body);
+    const body = req.body || {};
+    const san = v => (typeof v === 'string' ? (v.trim() === '' ? undefined : v) : v);
+    const title = san(body.title);
+    const subtitle = san(body.subtitle);
+    const description = san(body.description);
+    const type = san(body.type);
+    const slug = san(body.slug);
+    const duration = san(body.duration);
+    const grado = san(body.grado);
+    const registro = san(body.registro);
+    const perfil_egresado = san(body.perfil_egresado);
+    const mision = san(body.mision);
+    const vision = san(body.vision);
+    const modalidad = san(body.modalidad);
+
+    let temario = body.temario;
+    if (Array.isArray(temario)) temario = JSON.stringify(temario);
+    if (typeof temario === 'string' && temario.trim() === '') temario = undefined;
+
+    const missing = [];
+    if (!title) missing.push('title');
+    if (!type) missing.push('type');
+    if (missing.length) return res.status(400).json({ message: 'missing required fields', missing });
+
+    const payload = {};
+    payload.title = title;
+    if (typeof subtitle !== 'undefined') payload.subtitle = subtitle;
+    if (typeof description !== 'undefined') payload.description = description;
+    payload.type = type;
+    if (typeof body.thumbnail_media_id !== 'undefined') payload.thumbnail_media_id = body.thumbnail_media_id;
+    if (typeof slug !== 'undefined') payload.slug = slug;
+    if (typeof body.published !== 'undefined') payload.published = !!body.published;
+    if (typeof body.hours !== 'undefined') payload.hours = body.hours;
+    if (typeof duration !== 'undefined') payload.duration = duration;
+    if (typeof grado !== 'undefined') payload.grado = grado;
+    if (typeof registro !== 'undefined') payload.registro = registro;
+    if (typeof perfil_egresado !== 'undefined') payload.perfil_egresado = perfil_egresado;
+    if (typeof mision !== 'undefined') payload.mision = mision;
+    if (typeof vision !== 'undefined') payload.vision = vision;
+    if (typeof modalidad !== 'undefined') payload.modalidad = modalidad;
+    if (typeof temario !== 'undefined') payload.temario = temario;
+
+    const course = await db.Course.create(payload);
     return res.status(201).json(course);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'server error' });
+    // Return error message/details to help debugging in development
+    const details = err && err.errors ? err.errors.map(e => e.message) : null;
+    return res.status(500).json({ message: 'server error', error: err.message, details });
   }
 };
 
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, temario } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad } = req.body;
+    let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     const course = await db.Course.findByPk(id);
     if (!course) return res.status(404).json({ message: 'not found' });
 
@@ -103,7 +147,12 @@ exports.update = async (req, res) => {
     if (typeof mision !== 'undefined') updates.mision = mision;
     if (typeof vision !== 'undefined') updates.vision = vision;
     if (typeof modalidad !== 'undefined') updates.modalidad = modalidad;
-    if (typeof temario !== 'undefined') updates.temario = temario;
+    if (typeof temario !== 'undefined') {
+      let t = temario;
+      if (Array.isArray(t) || (t && typeof t === 'object')) t = JSON.stringify(t);
+      if (typeof t === 'string' && t.trim() === '') t = undefined;
+      if (typeof t !== 'undefined') updates.temario = t;
+    }
     if (typeof active !== 'undefined') updates.active = !!active;
 
     await course.update(updates);
