@@ -1,4 +1,5 @@
 const db = require('../models');
+const mailer = require('../utils/mailer');
 
 exports.list = async (req, res) => {
   try {
@@ -38,6 +39,15 @@ exports.create = async (req, res) => {
     if (!title) return res.status(400).json({ message: 'title required' });
 
     const item = await db.Noticia.create({ title, summary, featured_media_id, published: !!published, published_at });
+    try {
+      if (item.published) {
+        const users = await db.User.findAll({ where: { active: true }, attributes: ['email'] });
+        const emails = users.map(u => u.email).filter(Boolean);
+        if (emails.length) await mailer.sendNewsNotification(emails, item);
+      }
+    } catch (mailErr) {
+      console.error('failed to send publication emails', mailErr);
+    }
     return res.status(201).json({ id: item.id, title: item.title, summary: item.summary, featured_media_id: item.featured_media_id, published: item.published, published_at: item.published_at, active: item.active });
   } catch (err) {
     console.error(err);
@@ -51,6 +61,7 @@ exports.update = async (req, res) => {
     const { title, summary, featured_media_id, published, published_at, active } = req.body;
     const item = await db.Noticia.findByPk(id);
     if (!item) return res.status(404).json({ message: 'not found' });
+    const oldPublished = item.published;
 
     const updates = {};
     if (typeof title !== 'undefined') updates.title = title;
@@ -61,6 +72,15 @@ exports.update = async (req, res) => {
     if (typeof active !== 'undefined') updates.active = !!active;
 
     await item.update(updates);
+    try {
+      if (typeof updates.published !== 'undefined' && updates.published === true && !oldPublished) {
+        const users = await db.User.findAll({ where: { active: true }, attributes: ['email'] });
+        const emails = users.map(u => u.email).filter(Boolean);
+        if (emails.length) await mailer.sendNewsNotification(emails, item);
+      }
+    } catch (mailErr) {
+      console.error('failed to send publication emails', mailErr);
+    }
     return res.json({ id: item.id, title: item.title, summary: item.summary, featured_media_id: item.featured_media_id, published: item.published, published_at: item.published_at, active: item.active });
   } catch (err) {
     console.error(err);
