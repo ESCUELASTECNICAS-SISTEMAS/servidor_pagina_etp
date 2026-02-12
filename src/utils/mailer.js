@@ -17,6 +17,18 @@ if (SMTP_HOST && SMTP_USER) {
   });
 }
 
+// Diagnostic: log transporter status and attempt a verify when possible
+if (transporter) {
+  console.log('Mailer configured with host:', SMTP_HOST, 'port:', SMTP_PORT, 'user:', SMTP_USER ? 'set' : 'unset');
+  transporter.verify().then(() => {
+    console.log('Mailer: SMTP connection OK');
+  }).catch(err => {
+    console.error('Mailer: SMTP connection failed:', err && err.message ? err.message : err);
+  });
+} else {
+  console.log('Mailer not configured (missing SMTP_HOST or SMTP_USER)');
+}
+
 async function sendNewsNotification(recipients, noticia) {
   if (!recipients || recipients.length === 0) return;
   const subject = `Nueva noticia: ${noticia.title}`;
@@ -37,7 +49,15 @@ async function sendNewsNotification(recipients, noticia) {
     html
   };
 
-  return transporter.sendMail(mailOptions);
+  console.log('Mailer: sending email to', recipients.length, 'recipients, from:', FROM_EMAIL);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Mailer: sendMail completed, messageId=', info && info.messageId);
+    return info;
+  } catch (sendErr) {
+    console.error('Mailer: sendMail error:', sendErr && sendErr.message ? sendErr.message : sendErr);
+    throw sendErr;
+  }
 }
 
 module.exports = { sendNewsNotification };
