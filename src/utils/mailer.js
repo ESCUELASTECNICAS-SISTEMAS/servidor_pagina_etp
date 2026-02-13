@@ -9,21 +9,31 @@ const PUBLIC_URL = process.env.PUBLIC_URL || '';
 
 let transporter = null;
 if (SMTP_HOST && SMTP_USER) {
+  const port = SMTP_PORT ? parseInt(SMTP_PORT, 10) : 587;
+  const isSecure = port === 465;
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
-    port: SMTP_PORT ? parseInt(SMTP_PORT, 10) : 587,
-    secure: SMTP_PORT && parseInt(SMTP_PORT, 10) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
+    port,
+    secure: isSecure,
+    auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+    requireTLS: true,
+    tls: { rejectUnauthorized: false },
+    // timeouts (ms) - configurable via SMTP_CONNECTION_TIMEOUT env
+    connectionTimeout: process.env.SMTP_CONNECTION_TIMEOUT ? parseInt(process.env.SMTP_CONNECTION_TIMEOUT, 10) : 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000
   });
 }
 
 // Diagnostic: log transporter status and attempt a verify when possible
 if (transporter) {
-  console.log('Mailer configured with host:', SMTP_HOST, 'port:', SMTP_PORT, 'user:', SMTP_USER ? 'set' : 'unset');
+  const maskedUser = SMTP_USER ? SMTP_USER.replace(/(.{2}).+(@.+)/, '$1***$2') : 'unset';
+  console.log('Mailer configured with host:', SMTP_HOST, 'port:', SMTP_PORT || '(default 587)', 'user:', maskedUser);
   transporter.verify().then(() => {
     console.log('Mailer: SMTP connection OK');
   }).catch(err => {
     console.error('Mailer: SMTP connection failed:', err && err.message ? err.message : err);
+    if (err && err.stack) console.error(err.stack);
   });
 } else {
   console.log('Mailer not configured (missing SMTP_HOST or SMTP_USER)');
@@ -56,6 +66,7 @@ async function sendNewsNotification(recipients, noticia) {
     return info;
   } catch (sendErr) {
     console.error('Mailer: sendMail error:', sendErr && sendErr.message ? sendErr.message : sendErr);
+    if (sendErr && sendErr.stack) console.error(sendErr.stack);
     throw sendErr;
   }
 }
