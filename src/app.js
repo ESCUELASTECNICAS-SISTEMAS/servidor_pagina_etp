@@ -36,6 +36,7 @@ const mediaRoutes = require('./routes/media.routes');
 const courseRoutes = require('./routes/course.routes');
 const carouselRoutes = require('./routes/carousel.routes');
 const docenteRoutes = require('./routes/docente.routes');
+const debugRoutes = require('./routes/debug.routes');
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/social-links', socialRoutes);
@@ -44,6 +45,7 @@ app.use('/media', mediaRoutes);
 app.use('/courses', courseRoutes);
 app.use('/carousel-slides', carouselRoutes);
 app.use('/docentes', docenteRoutes);
+app.use('/debug', debugRoutes);
 
 app.get('/', (req, res) => res.json({ ok: true }));
 

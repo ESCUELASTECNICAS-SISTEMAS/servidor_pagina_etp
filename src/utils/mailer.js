@@ -61,3 +61,15 @@ async function sendNewsNotification(recipients, noticia) {
 }
 
 module.exports = { sendNewsNotification };
+
+async function verifyTransporter() {
+  if (!transporter) return { ok: false, message: 'transporter not configured' };
+  try {
+    await transporter.verify();
+    return { ok: true, message: 'SMTP connection OK' };
+  } catch (err) {
+    return { ok: false, message: err && err.message ? err.message : String(err) };
+  }
+}
+
+module.exports = { sendNewsNotification, verifyTransporter };
