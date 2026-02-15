@@ -30,7 +30,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'modulos', 'thumbnail_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'thumbnail_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -52,7 +52,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'modulos', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -85,6 +85,8 @@ exports.create = async (req, res) => {
     const mision = san(body.mision);
     const vision = san(body.vision);
     const modalidad = san(body.modalidad);
+    const razones_para_estudiar = san(body.razones_para_estudiar);
+    const publico_objetivo = san(body.publico_objetivo);
 
     let temario = body.temario;
     if (Array.isArray(temario)) temario = JSON.stringify(temario);
@@ -115,6 +117,8 @@ exports.create = async (req, res) => {
     if (typeof mision !== 'undefined') payload.mision = mision;
     if (typeof vision !== 'undefined') payload.vision = vision;
     if (typeof modalidad !== 'undefined') payload.modalidad = modalidad;
+    if (typeof razones_para_estudiar !== 'undefined') payload.razones_para_estudiar = razones_para_estudiar;
+    if (typeof publico_objetivo !== 'undefined') payload.publico_objetivo = publico_objetivo;
     if (typeof temario !== 'undefined') payload.temario = temario;
     if (typeof modulos !== 'undefined') payload.modulos = modulos;
 
@@ -131,7 +135,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
     let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     let modulos = req.body && typeof req.body.modulos !== 'undefined' ? req.body.modulos : undefined;
     const course = await db.Course.findByPk(id);
@@ -153,6 +157,8 @@ exports.update = async (req, res) => {
     if (typeof mision !== 'undefined') updates.mision = mision;
     if (typeof vision !== 'undefined') updates.vision = vision;
     if (typeof modalidad !== 'undefined') updates.modalidad = modalidad;
+    if (typeof razones_para_estudiar !== 'undefined') updates.razones_para_estudiar = razones_para_estudiar;
+    if (typeof publico_objetivo !== 'undefined') updates.publico_objetivo = publico_objetivo;
     if (typeof temario !== 'undefined') {
       let t = temario;
       if (Array.isArray(t) || (t && typeof t === 'object')) t = JSON.stringify(t);
