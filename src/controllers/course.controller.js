@@ -12,6 +12,66 @@ const getIncludes = () => {
   ];
 };
 
+// Formatea los schedules a una estructura por día y turno para mostrar en tabla
+const normalizeDay = (d) => {
+  if (!d) return null;
+  const s = d.toString().toLowerCase().trim();
+  if (s.includes('lun')) return 'Lunes';
+  if (s.includes('mar')) return 'Martes';
+  if (s.includes('mie') || s.includes('mié') || s.includes('mier')) return 'Miércoles';
+  if (s.includes('jue')) return 'Jueves';
+  if (s.includes('vie')) return 'Viernes';
+  if (s.includes('sab')) return 'Sábado';
+  if (s.includes('dom')) return 'Domingo';
+  return d;
+};
+
+const formatTime = (t) => {
+  if (!t) return null;
+  // t like '08:00:00' -> '08:00'
+  return t.toString().substring(0,5);
+};
+
+const formatSchedulesForGrid = (schedules) => {
+  const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const grid = {};
+  days.forEach(d => { grid[d] = { manana: [], tarde: [], noche: [] }; });
+  if (!Array.isArray(schedules)) return grid;
+
+  schedules.forEach(s => {
+    // dia puede venir como 'Lun - Mier - Vier' o 'Martes y Jueves'
+    const raw = s.dia || '';
+    const parts = raw.split(/[-,yY]|\band\b|\b&\b|\/|\\\\/).map(p => p.trim()).filter(Boolean);
+    const horaInicio = formatTime(s.hora_inicio);
+    const horaFin = formatTime(s.hora_fin);
+    const timeRange = (horaInicio && horaFin) ? `${horaInicio} - ${horaFin}` : null;
+    const turno = (s.turno || '').toString().toLowerCase();
+
+    parts.forEach(p => {
+      const day = normalizeDay(p);
+      if (!days.includes(day)) return;
+      if (turno.includes('mañ') || turno.includes('man') || turno.includes('maÃ±')) {
+        if (timeRange) grid[day].manana.push(timeRange);
+      } else if (turno.includes('tar') || turno.includes('tarde')) {
+        if (timeRange) grid[day].tarde.push(timeRange);
+      } else if (turno.includes('noc') || turno.includes('noche')) {
+        if (timeRange) grid[day].noche.push(timeRange);
+      } else {
+        // Si no hay turno, inferir por hora
+        if (!timeRange) return;
+        const h = horaInicio ? parseInt(horaInicio.split(':')[0],10) : null;
+        if (h !== null) {
+          if (h >= 6 && h < 12) grid[day].manana.push(timeRange);
+          else if (h >= 12 && h < 18) grid[day].tarde.push(timeRange);
+          else grid[day].noche.push(timeRange);
+        }
+      }
+    });
+  });
+
+  return grid;
+};
+
 exports.list = async (req, res) => {
   try {
     const where = {};
@@ -38,6 +98,8 @@ exports.list = async (req, res) => {
       if (Array.isArray(obj.certificados)) {
         obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
       }
+      // Formatear horarios para frontend
+      obj.horarios = formatSchedulesForGrid(obj.schedules);
       return obj;
     });
     return res.json(out);
@@ -61,6 +123,7 @@ exports.getById = async (req, res) => {
     if (Array.isArray(obj.certificados)) {
       obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
     }
+    obj.horarios = formatSchedulesForGrid(obj.schedules);
     return res.json(obj);
   } catch (err) {
     console.error(err);
