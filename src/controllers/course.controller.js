@@ -32,6 +32,17 @@ const formatTime = (t) => {
   return t.toString().substring(0,5);
 };
 
+const tryParseJSON = (s) => {
+  if (typeof s !== 'string') return s;
+  const t = s.trim();
+  if (!(t.startsWith('{') || t.startsWith('['))) return s;
+  try {
+    return JSON.parse(s);
+  } catch (e) {
+    return s;
+  }
+};
+
 const formatSchedulesForGrid = (schedules) => {
   const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   const grid = {};
@@ -95,6 +106,8 @@ exports.list = async (req, res) => {
     });
     const out = courses.map(c => {
       const obj = c.toJSON();
+      // si `temario` fue guardado como JSON string, devolverlo parsed
+      if (typeof obj.temario === 'string') obj.temario = tryParseJSON(obj.temario);
       if (Array.isArray(obj.certificados)) {
         obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
       }
@@ -120,6 +133,7 @@ exports.getById = async (req, res) => {
     if (!course) return res.status(404).json({ message: 'not found' });
     if (course.active === false && !includeInactive) return res.status(404).json({ message: 'not found' });
     const obj = course.toJSON();
+    if (typeof obj.temario === 'string') obj.temario = tryParseJSON(obj.temario);
     if (Array.isArray(obj.certificados)) {
       obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
     }
