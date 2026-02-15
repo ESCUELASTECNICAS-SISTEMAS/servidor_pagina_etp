@@ -16,6 +16,7 @@ router.delete('/:id/docentes/:docenteId', authenticate, requireAdmin, controller
 
 // Schedules de un curso
 router.post('/:id/schedules', authenticate, requireAdmin, controller.addSchedule);
+router.post('/:id/schedules/batch', authenticate, requireAdmin, controller.addSchedulesBatch);
 router.put('/:id/schedules/:scheduleId', authenticate, requireAdmin, controller.updateSchedule);
 router.delete('/:id/schedules/:scheduleId', authenticate, requireAdmin, controller.removeSchedule);
 

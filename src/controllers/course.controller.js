@@ -337,6 +337,53 @@ exports.updateSchedule = async (req, res) => {
   }
 };
 
+// Crea varios schedules en una sola petición. Body: array de objetos { dia, turno, hora_inicio, hora_fin, aula }
+exports.addSchedulesBatch = async (req, res) => {
+  try {
+    const { id } = req.params; // course_id
+    const items = req.body;
+    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ message: 'body must be a non-empty array' });
+
+    const course = await db.Course.findByPk(id);
+    if (!course) return res.status(404).json({ message: 'course not found' });
+
+    const created = [];
+    // Use transaction so all-or-nothing
+    const result = await db.sequelize.transaction(async (t) => {
+      for (const it of items) {
+        // Support dia as string or array
+        let dias = it.dia;
+        if (!dias) continue;
+        if (Array.isArray(dias)) dias = dias;
+        else if (typeof dias === 'string' && dias.includes('-')) {
+          dias = dias.split(/[-,]/).map(s => s.trim()).filter(Boolean);
+        } else {
+          dias = [dias];
+        }
+
+        for (const dia of dias) {
+          const payload = {
+            course_id: id,
+            dia: dia,
+            turno: it.turno,
+            hora_inicio: it.hora_inicio,
+            hora_fin: it.hora_fin,
+            aula: it.aula
+          };
+          const s = await db.CourseSchedule.create(payload, { transaction: t });
+          created.push(s);
+        }
+      }
+      return created;
+    });
+
+    return res.status(201).json({ created: result.length });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'server error', error: err.message });
+  }
+};
+
 exports.removeSchedule = async (req, res) => {
   try {
     const { id, scheduleId } = req.params;
