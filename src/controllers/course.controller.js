@@ -341,7 +341,18 @@ exports.updateSchedule = async (req, res) => {
     if (typeof hora_inicio !== 'undefined') updates.hora_inicio = hora_inicio;
     if (typeof hora_fin !== 'undefined') updates.hora_fin = hora_fin;
     if (typeof aula !== 'undefined') updates.aula = aula;
-    if (typeof active !== 'undefined') updates.active = !!active;
+    if (typeof active !== 'undefined') {
+      // Accept boolean, numeric or string values. Treat 'false', '0' and empty
+      // string as false. This prevents strings like 'false' being coerced to true.
+      if (typeof active === 'boolean') updates.active = active;
+      else if (typeof active === 'number') updates.active = active !== 0;
+      else if (typeof active === 'string') {
+        const s = active.trim().toLowerCase();
+        updates.active = !(s === 'false' || s === '0' || s === '');
+      } else {
+        updates.active = !!active;
+      }
+    }
 
     await schedule.update(updates);
     return res.json(schedule);
