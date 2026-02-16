@@ -4,32 +4,12 @@ const db = require('../models');
 const getIncludes = () => {
   return [
     { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
+    { model: db.Media, as: 'horarios', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Docente, as: 'docentes', attributes: ['id', 'nombre', 'especialidad', 'bio', 'email'], through: { attributes: ['rol'] }, include: [{ model: db.Media, as: 'foto', attributes: ['id', 'url', 'alt_text'] }] },
-    { model: db.CourseSchedule, as: 'schedules', attributes: ['id', 'dia', 'turno', 'hora_inicio', 'hora_fin', 'aula'], required: false },
     { model: db.Certificado, as: 'certificados', attributes: ['id', 'titulo', 'descripcion', 'institucion_emisora', 'orden', 'active'], required: false },
     { model: db.Seminario, as: 'seminarios', attributes: ['id', 'titulo', 'descripcion', 'fecha', 'duracion_horas', 'orden'], required: false },
     { model: db.Convenio, as: 'convenios', attributes: ['id', 'institucion', 'descripcion', 'url', 'orden'], required: false, include: [{ model: db.Media, as: 'logo', attributes: ['id', 'url', 'alt_text'] }] }
   ];
-};
-
-// Formatea los schedules a una estructura por día y turno para mostrar en tabla
-const normalizeDay = (d) => {
-  if (!d) return null;
-  const s = d.toString().toLowerCase().trim();
-  if (s.includes('lun')) return 'Lunes';
-  if (s.includes('mar')) return 'Martes';
-  if (s.includes('mie') || s.includes('mié') || s.includes('mier')) return 'Miércoles';
-  if (s.includes('jue')) return 'Jueves';
-  if (s.includes('vie')) return 'Viernes';
-  if (s.includes('sab')) return 'Sábado';
-  if (s.includes('dom')) return 'Domingo';
-  return d;
-};
-
-const formatTime = (t) => {
-  if (!t) return null;
-  // t like '08:00:00' -> '08:00'
-  return t.toString().substring(0,5);
 };
 
 const tryParseJSON = (s) => {
@@ -41,46 +21,6 @@ const tryParseJSON = (s) => {
   } catch (e) {
     return s;
   }
-};
-
-const formatSchedulesForGrid = (schedules) => {
-  const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-  const grid = {};
-  days.forEach(d => { grid[d] = { manana: [], tarde: [], noche: [] }; });
-  if (!Array.isArray(schedules)) return grid;
-
-  schedules.forEach(s => {
-    // dia puede venir como 'Lun - Mier - Vier' o 'Martes y Jueves'
-    const raw = s.dia || '';
-    const parts = raw.split(/[-,yY]|\band\b|\b&\b|\/|\\\\/).map(p => p.trim()).filter(Boolean);
-    const horaInicio = formatTime(s.hora_inicio);
-    const horaFin = formatTime(s.hora_fin);
-    const timeRange = (horaInicio && horaFin) ? `${horaInicio} - ${horaFin}` : null;
-    const turno = (s.turno || '').toString().toLowerCase();
-
-    parts.forEach(p => {
-      const day = normalizeDay(p);
-      if (!days.includes(day)) return;
-      if (turno.includes('mañ') || turno.includes('man') || turno.includes('maÃ±')) {
-        if (timeRange) grid[day].manana.push(timeRange);
-      } else if (turno.includes('tar') || turno.includes('tarde')) {
-        if (timeRange) grid[day].tarde.push(timeRange);
-      } else if (turno.includes('noc') || turno.includes('noche')) {
-        if (timeRange) grid[day].noche.push(timeRange);
-      } else {
-        // Si no hay turno, inferir por hora
-        if (!timeRange) return;
-        const h = horaInicio ? parseInt(horaInicio.split(':')[0],10) : null;
-        if (h !== null) {
-          if (h >= 6 && h < 12) grid[day].manana.push(timeRange);
-          else if (h >= 12 && h < 18) grid[day].tarde.push(timeRange);
-          else grid[day].noche.push(timeRange);
-        }
-      }
-    });
-  });
-
-  return grid;
 };
 
 exports.list = async (req, res) => {
@@ -101,7 +41,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'thumbnail_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -111,8 +51,6 @@ exports.list = async (req, res) => {
       if (Array.isArray(obj.certificados)) {
         obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
       }
-      // Formatear horarios para frontend
-      obj.horarios = formatSchedulesForGrid(obj.schedules);
       return obj;
     });
     return res.json(out);
@@ -127,7 +65,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -137,7 +75,6 @@ exports.getById = async (req, res) => {
     if (Array.isArray(obj.certificados)) {
       obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
     }
-    obj.horarios = formatSchedulesForGrid(obj.schedules);
     return res.json(obj);
   } catch (err) {
     console.error(err);
@@ -184,6 +121,7 @@ exports.create = async (req, res) => {
     if (typeof description !== 'undefined') payload.description = description;
     payload.type = type;
     if (typeof body.thumbnail_media_id !== 'undefined') payload.thumbnail_media_id = body.thumbnail_media_id;
+    if (typeof body.horarios_media_id !== 'undefined') payload.horarios_media_id = body.horarios_media_id;
     if (typeof slug !== 'undefined') payload.slug = slug;
     if (typeof body.published !== 'undefined') payload.published = !!body.published;
     if (typeof body.hours !== 'undefined') payload.hours = body.hours;
@@ -212,7 +150,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, horarios_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
     let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     let modulos = req.body && typeof req.body.modulos !== 'undefined' ? req.body.modulos : undefined;
     const course = await db.Course.findByPk(id);
@@ -224,6 +162,7 @@ exports.update = async (req, res) => {
     if (typeof description !== 'undefined') updates.description = description;
     if (typeof type !== 'undefined') updates.type = type;
     if (typeof thumbnail_media_id !== 'undefined') updates.thumbnail_media_id = thumbnail_media_id;
+    if (typeof horarios_media_id !== 'undefined') updates.horarios_media_id = horarios_media_id;
     if (typeof slug !== 'undefined') updates.slug = slug;
     if (typeof published !== 'undefined') updates.published = !!published;
     if (typeof hours !== 'undefined') updates.hours = hours;
@@ -303,147 +242,6 @@ exports.removeDocente = async (req, res) => {
     const deleted = await db.CourseDocente.destroy({ where: { course_id: id, docente_id: docenteId } });
     if (!deleted) return res.status(404).json({ message: 'relation not found' });
     return res.json({ message: 'removed' });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'server error' });
-  }
-};
-
-// ===================== SCHEDULES =====================
-exports.addSchedule = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { dia, turno, hora_inicio, hora_fin, aula } = req.body;
-    if (!dia) return res.status(400).json({ message: 'dia required' });
-
-    const course = await db.Course.findByPk(id);
-    if (!course) return res.status(404).json({ message: 'course not found' });
-
-    const schedule = await db.CourseSchedule.create({ course_id: id, dia, turno, hora_inicio, hora_fin, aula });
-    return res.status(201).json(schedule);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'server error' });
-  }
-};
-
-exports.updateSchedule = async (req, res) => {
-  try {
-    const { id, scheduleId } = req.params;
-    const { dia, turno, hora_inicio, hora_fin, aula, active } = req.body;
-
-    const schedule = await db.CourseSchedule.findOne({ where: { id: scheduleId, course_id: id } });
-    if (!schedule) return res.status(404).json({ message: 'schedule not found' });
-
-    const updates = {};
-    if (typeof dia !== 'undefined') updates.dia = dia;
-    if (typeof turno !== 'undefined') updates.turno = turno;
-    if (typeof hora_inicio !== 'undefined') updates.hora_inicio = hora_inicio;
-    if (typeof hora_fin !== 'undefined') updates.hora_fin = hora_fin;
-    if (typeof aula !== 'undefined') updates.aula = aula;
-    if (typeof active !== 'undefined') {
-      // Accept boolean, numeric or string values. Treat 'false', '0' and empty
-      // string as false. This prevents strings like 'false' being coerced to true.
-      if (typeof active === 'boolean') updates.active = active;
-      else if (typeof active === 'number') updates.active = active !== 0;
-      else if (typeof active === 'string') {
-        const s = active.trim().toLowerCase();
-        updates.active = !(s === 'false' || s === '0' || s === '');
-      } else {
-        updates.active = !!active;
-      }
-    }
-
-    await schedule.update(updates);
-    return res.json(schedule);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'server error' });
-  }
-};
-
-// Crea varios schedules en una sola petición. Body: array de objetos { dia, turno, hora_inicio, hora_fin, aula }
-exports.addSchedulesBatch = async (req, res) => {
-  try {
-    const { id } = req.params; // course_id
-    const items = req.body;
-    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ message: 'body must be a non-empty array' });
-
-    // If `replace` is true (either query param or body property), we'll mark any
-    // existing schedules not present in the incoming list as inactive. This lets
-    // the frontend send the full current list and remove others.
-    const replace = (req.query.replace && req.query.replace.toString().toLowerCase() === 'true') || (req.body && req.body.replace === true);
-
-    const course = await db.Course.findByPk(id);
-    if (!course) return res.status(404).json({ message: 'course not found' });
-
-    const created = [];
-    const processedIds = [];
-
-    // Use transaction so all-or-nothing
-    await db.sequelize.transaction(async (t) => {
-      for (const it of items) {
-        // Support dia as string or array
-        let dias = it.dia;
-        if (!dias) continue;
-        if (Array.isArray(dias)) dias = dias;
-        else if (typeof dias === 'string' && dias.includes('-')) {
-          dias = dias.split(/[-,]/).map(s => s.trim()).filter(Boolean);
-        } else {
-          dias = [dias];
-        }
-
-        for (const dia of dias) {
-          const payload = {
-            course_id: id,
-            dia: dia,
-            turno: it.turno,
-            hora_inicio: it.hora_inicio,
-            hora_fin: it.hora_fin,
-            aula: it.aula
-          };
-
-          // If client provided an `id`, try to update existing schedule
-          if (it.id) {
-            const existing = await db.CourseSchedule.findOne({ where: { id: it.id, course_id: id }, transaction: t });
-            if (existing) {
-              await existing.update(payload, { transaction: t });
-              processedIds.push(existing.id);
-              continue;
-            }
-            // fallthrough to create if provided id not found
-          }
-
-          const s = await db.CourseSchedule.create(payload, { transaction: t });
-          created.push(s);
-          processedIds.push(s.id);
-        }
-      }
-
-      // If requested, mark any other schedules for this course as inactive
-      if (replace) {
-        const where = { course_id: id };
-        if (processedIds.length > 0) {
-          where.id = { [db.Sequelize.Op.notIn]: processedIds };
-        }
-        await db.CourseSchedule.update({ active: false }, { where, transaction: t });
-      }
-    });
-
-    return res.status(201).json({ created: created.length, processed: processedIds.length });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'server error', error: err.message });
-  }
-};
-
-exports.removeSchedule = async (req, res) => {
-  try {
-    const { id, scheduleId } = req.params;
-    const schedule = await db.CourseSchedule.findOne({ where: { id: scheduleId, course_id: id } });
-    if (!schedule) return res.status(404).json({ message: 'schedule not found' });
-    await schedule.update({ active: false });
-    return res.json({ id: schedule.id, active: schedule.active });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error' });
