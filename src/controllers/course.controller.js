@@ -358,12 +358,19 @@ exports.addSchedulesBatch = async (req, res) => {
     const items = req.body;
     if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ message: 'body must be a non-empty array' });
 
+    // If `replace` is true (either query param or body property), we'll mark any
+    // existing schedules not present in the incoming list as inactive. This lets
+    // the frontend send the full current list and remove others.
+    const replace = (req.query.replace && req.query.replace.toString().toLowerCase() === 'true') || (req.body && req.body.replace === true);
+
     const course = await db.Course.findByPk(id);
     if (!course) return res.status(404).json({ message: 'course not found' });
 
     const created = [];
+    const processedIds = [];
+
     // Use transaction so all-or-nothing
-    const result = await db.sequelize.transaction(async (t) => {
+    await db.sequelize.transaction(async (t) => {
       for (const it of items) {
         // Support dia as string or array
         let dias = it.dia;
@@ -384,14 +391,35 @@ exports.addSchedulesBatch = async (req, res) => {
             hora_fin: it.hora_fin,
             aula: it.aula
           };
+
+          // If client provided an `id`, try to update existing schedule
+          if (it.id) {
+            const existing = await db.CourseSchedule.findOne({ where: { id: it.id, course_id: id }, transaction: t });
+            if (existing) {
+              await existing.update(payload, { transaction: t });
+              processedIds.push(existing.id);
+              continue;
+            }
+            // fallthrough to create if provided id not found
+          }
+
           const s = await db.CourseSchedule.create(payload, { transaction: t });
           created.push(s);
+          processedIds.push(s.id);
         }
       }
-      return created;
+
+      // If requested, mark any other schedules for this course as inactive
+      if (replace) {
+        const where = { course_id: id };
+        if (processedIds.length > 0) {
+          where.id = { [db.Sequelize.Op.notIn]: processedIds };
+        }
+        await db.CourseSchedule.update({ active: false }, { where, transaction: t });
+      }
     });
 
-    return res.status(201).json({ created: result.length });
+    return res.status(201).json({ created: created.length, processed: processedIds.length });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error', error: err.message });
