@@ -2,13 +2,17 @@ const db = require('../models');
 
 exports.list = async (req, res) => {
   try {
-    let activeFilter = true;
+    // By default return all items. Apply filters only if query params provided.
+    const where = {};
     if (typeof req.query.active !== 'undefined') {
       const v = req.query.active.toString().toLowerCase();
-      activeFilter = !(v === 'false' || v === '0');
+      where.active = !(v === 'false' || v === '0');
+    }
+    if (typeof req.query.published !== 'undefined') {
+      const v = req.query.published.toString().toLowerCase();
+      where.published = !(v === 'false' || v === '0');
     }
 
-    const where = { active: activeFilter };
     const items = await db.Noticia.findAll({ where, attributes: ['id', 'title', 'summary', 'featured_media_id', 'published', 'published_at', 'active', 'created_at'] });
     return res.json(items);
   } catch (err) {
