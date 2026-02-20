@@ -14,11 +14,6 @@ router.delete('/:id', authenticate, requireAdmin, controller.remove);
 router.post('/:id/docentes', authenticate, requireAdmin, controller.addDocente);
 router.delete('/:id/docentes/:docenteId', authenticate, requireAdmin, controller.removeDocente);
 
-// Schedules de un curso
-router.post('/:id/schedules', authenticate, requireAdmin, controller.addSchedule);
-router.put('/:id/schedules/:scheduleId', authenticate, requireAdmin, controller.updateSchedule);
-router.delete('/:id/schedules/:scheduleId', authenticate, requireAdmin, controller.removeSchedule);
-
 // Certificados de un curso
 router.post('/:id/certificados', authenticate, requireAdmin, controller.addCertificado);
 router.put('/:id/certificados/:certId', authenticate, requireAdmin, controller.updateCertificado);

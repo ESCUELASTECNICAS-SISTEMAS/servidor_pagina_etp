@@ -4,12 +4,23 @@ const db = require('../models');
 const getIncludes = () => {
   return [
     { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
+    { model: db.Media, as: 'horarios', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Docente, as: 'docentes', attributes: ['id', 'nombre', 'especialidad', 'bio', 'email'], through: { attributes: ['rol'] }, include: [{ model: db.Media, as: 'foto', attributes: ['id', 'url', 'alt_text'] }] },
-    { model: db.CourseSchedule, as: 'schedules', attributes: ['id', 'dia', 'turno', 'hora_inicio', 'hora_fin', 'aula'], required: false },
     { model: db.Certificado, as: 'certificados', attributes: ['id', 'titulo', 'descripcion', 'institucion_emisora', 'orden', 'active'], required: false },
     { model: db.Seminario, as: 'seminarios', attributes: ['id', 'titulo', 'descripcion', 'fecha', 'duracion_horas', 'orden'], required: false },
     { model: db.Convenio, as: 'convenios', attributes: ['id', 'institucion', 'descripcion', 'url', 'orden'], required: false, include: [{ model: db.Media, as: 'logo', attributes: ['id', 'url', 'alt_text'] }] }
   ];
+};
+
+const tryParseJSON = (s) => {
+  if (typeof s !== 'string') return s;
+  const t = s.trim();
+  if (!(t.startsWith('{') || t.startsWith('['))) return s;
+  try {
+    return JSON.parse(s);
+  } catch (e) {
+    return s;
+  }
 };
 
 exports.list = async (req, res) => {
@@ -30,11 +41,13 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'modulos', 'thumbnail_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
       const obj = c.toJSON();
+      // si `temario` fue guardado como JSON string, devolverlo parsed
+      if (typeof obj.temario === 'string') obj.temario = tryParseJSON(obj.temario);
       if (Array.isArray(obj.certificados)) {
         obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
       }
@@ -52,12 +65,13 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'modulos', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
     if (course.active === false && !includeInactive) return res.status(404).json({ message: 'not found' });
     const obj = course.toJSON();
+    if (typeof obj.temario === 'string') obj.temario = tryParseJSON(obj.temario);
     if (Array.isArray(obj.certificados)) {
       obj.certificados = obj.certificados.map(cert => ({ ...cert, active: typeof cert.active !== 'undefined' ? cert.active : true }));
     }
@@ -85,6 +99,8 @@ exports.create = async (req, res) => {
     const mision = san(body.mision);
     const vision = san(body.vision);
     const modalidad = san(body.modalidad);
+    const razones_para_estudiar = san(body.razones_para_estudiar);
+    const publico_objetivo = san(body.publico_objetivo);
 
     let temario = body.temario;
     if (Array.isArray(temario)) temario = JSON.stringify(temario);
@@ -105,6 +121,7 @@ exports.create = async (req, res) => {
     if (typeof description !== 'undefined') payload.description = description;
     payload.type = type;
     if (typeof body.thumbnail_media_id !== 'undefined') payload.thumbnail_media_id = body.thumbnail_media_id;
+    if (typeof body.horarios_media_id !== 'undefined') payload.horarios_media_id = body.horarios_media_id;
     if (typeof slug !== 'undefined') payload.slug = slug;
     if (typeof body.published !== 'undefined') payload.published = !!body.published;
     if (typeof body.hours !== 'undefined') payload.hours = body.hours;
@@ -115,6 +132,8 @@ exports.create = async (req, res) => {
     if (typeof mision !== 'undefined') payload.mision = mision;
     if (typeof vision !== 'undefined') payload.vision = vision;
     if (typeof modalidad !== 'undefined') payload.modalidad = modalidad;
+    if (typeof razones_para_estudiar !== 'undefined') payload.razones_para_estudiar = razones_para_estudiar;
+    if (typeof publico_objetivo !== 'undefined') payload.publico_objetivo = publico_objetivo;
     if (typeof temario !== 'undefined') payload.temario = temario;
     if (typeof modulos !== 'undefined') payload.modulos = modulos;
 
@@ -131,7 +150,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subtitle, description, type, thumbnail_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, horarios_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
     let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     let modulos = req.body && typeof req.body.modulos !== 'undefined' ? req.body.modulos : undefined;
     const course = await db.Course.findByPk(id);
@@ -143,6 +162,7 @@ exports.update = async (req, res) => {
     if (typeof description !== 'undefined') updates.description = description;
     if (typeof type !== 'undefined') updates.type = type;
     if (typeof thumbnail_media_id !== 'undefined') updates.thumbnail_media_id = thumbnail_media_id;
+    if (typeof horarios_media_id !== 'undefined') updates.horarios_media_id = horarios_media_id;
     if (typeof slug !== 'undefined') updates.slug = slug;
     if (typeof published !== 'undefined') updates.published = !!published;
     if (typeof hours !== 'undefined') updates.hours = hours;
@@ -153,6 +173,8 @@ exports.update = async (req, res) => {
     if (typeof mision !== 'undefined') updates.mision = mision;
     if (typeof vision !== 'undefined') updates.vision = vision;
     if (typeof modalidad !== 'undefined') updates.modalidad = modalidad;
+    if (typeof razones_para_estudiar !== 'undefined') updates.razones_para_estudiar = razones_para_estudiar;
+    if (typeof publico_objetivo !== 'undefined') updates.publico_objetivo = publico_objetivo;
     if (typeof temario !== 'undefined') {
       let t = temario;
       if (Array.isArray(t) || (t && typeof t === 'object')) t = JSON.stringify(t);
@@ -220,61 +242,6 @@ exports.removeDocente = async (req, res) => {
     const deleted = await db.CourseDocente.destroy({ where: { course_id: id, docente_id: docenteId } });
     if (!deleted) return res.status(404).json({ message: 'relation not found' });
     return res.json({ message: 'removed' });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'server error' });
-  }
-};
-
-// ===================== SCHEDULES =====================
-exports.addSchedule = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { dia, turno, hora_inicio, hora_fin, aula } = req.body;
-    if (!dia) return res.status(400).json({ message: 'dia required' });
-
-    const course = await db.Course.findByPk(id);
-    if (!course) return res.status(404).json({ message: 'course not found' });
-
-    const schedule = await db.CourseSchedule.create({ course_id: id, dia, turno, hora_inicio, hora_fin, aula });
-    return res.status(201).json(schedule);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'server error' });
-  }
-};
-
-exports.updateSchedule = async (req, res) => {
-  try {
-    const { id, scheduleId } = req.params;
-    const { dia, turno, hora_inicio, hora_fin, aula, active } = req.body;
-
-    const schedule = await db.CourseSchedule.findOne({ where: { id: scheduleId, course_id: id } });
-    if (!schedule) return res.status(404).json({ message: 'schedule not found' });
-
-    const updates = {};
-    if (typeof dia !== 'undefined') updates.dia = dia;
-    if (typeof turno !== 'undefined') updates.turno = turno;
-    if (typeof hora_inicio !== 'undefined') updates.hora_inicio = hora_inicio;
-    if (typeof hora_fin !== 'undefined') updates.hora_fin = hora_fin;
-    if (typeof aula !== 'undefined') updates.aula = aula;
-    if (typeof active !== 'undefined') updates.active = !!active;
-
-    await schedule.update(updates);
-    return res.json(schedule);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'server error' });
-  }
-};
-
-exports.removeSchedule = async (req, res) => {
-  try {
-    const { id, scheduleId } = req.params;
-    const schedule = await db.CourseSchedule.findOne({ where: { id: scheduleId, course_id: id } });
-    if (!schedule) return res.status(404).json({ message: 'schedule not found' });
-    await schedule.update({ active: false });
-    return res.json({ id: schedule.id, active: schedule.active });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error' });

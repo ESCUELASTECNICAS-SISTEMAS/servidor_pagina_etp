@@ -12,12 +12,27 @@ exports.list = async (req, res) => {
     }
 
     const where = { active: activeFilter };
+    // sorting: allow ?sort=name|created_at|email|role|id and ?dir=asc|desc
+    const allowedSort = ['name', 'created_at', 'email', 'role', 'id'];
+    const sort = allowedSort.includes(req.query.sort) ? req.query.sort : 'name';
+    const dir = (req.query.dir && req.query.dir.toString().toLowerCase() === 'desc') ? 'DESC' : 'ASC';
 
     const users = await db.User.findAll({
       where,
-      attributes: ['id', 'name', 'email', 'role', 'created_at', 'active']
+      attributes: ['id', 'name', 'email', 'role', 'created_at', 'active'],
+      order: [[sort, dir]]
     });
-    return res.json(users);
+
+    // format created_at as ISO string for consistent output
+    const formatted = users.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      created_at: u.created_at ? u.created_at.toISOString() : null,
+      active: u.active
+    }));
+    return res.json(formatted);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error' });
@@ -36,8 +51,15 @@ exports.getById = async (req, res) => {
     // include inactive only if ?include_inactive=true
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     if (user.active === false && !includeInactive) return res.status(404).json({ message: 'user not found' });
-
-    return res.json(user);
+    const formatted = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      created_at: user.created_at ? user.created_at.toISOString() : null,
+      active: user.active
+    };
+    return res.json(formatted);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error' });
