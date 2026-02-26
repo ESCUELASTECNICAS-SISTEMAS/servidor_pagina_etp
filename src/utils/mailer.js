@@ -18,7 +18,8 @@ const SMTP_PORT = process.env.SMTP_PORT;
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const FROM_EMAIL = process.env.MAIL_FROM || SMTP_USER;
-const PUBLIC_URL = process.env.PUBLIC_URL || '';
+// Normalize PUBLIC_URL: ensure no trailing slash to avoid double slashes when concatenating
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 let brevoClient = null;
@@ -68,8 +69,9 @@ if (transporter) {
 async function sendNewsNotification(recipients, noticia) {
   if (!recipients || recipients.length === 0) return;
   const subject = `Nueva noticia: ${noticia.title}`;
-  const text = `${noticia.summary || ''}\n\nVer la noticia: ${PUBLIC_URL}/noticias/${noticia.id}`;
-  const html = `<h1>${noticia.title}</h1><p>${noticia.summary || ''}</p><p><a href="${PUBLIC_URL}/noticias/${noticia.id}">Ver noticia</a></p>`;
+  // Use the public-facing article path (singular) and avoid duplicate slashes
+  const text = `${noticia.summary || ''}\n\nVer la noticia: ${PUBLIC_URL}/noticia/${noticia.id}`;
+  const html = `<h1>${noticia.title}</h1><p>${noticia.summary || ''}</p><p><a href="${PUBLIC_URL}/noticia/${noticia.id}">Ver noticia</a></p>`;
 
   // If Brevo API key present, prefer API sending (works from PaaS where SMTP is blocked)
   if (brevoClient) {
