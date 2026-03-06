@@ -23,6 +23,26 @@ const tryParseJSON = (s) => {
   }
 };
 
+const parseNullableDecimal = (v) => {
+  if (typeof v === 'undefined' || v === null) return undefined;
+  if (typeof v === 'string' && v.trim() === '') return undefined;
+  const n = Number(v);
+  if (Number.isNaN(n)) return undefined;
+  return n;
+};
+
+const parseBooleanish = (v) => {
+  if (typeof v === 'undefined') return undefined;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  if (typeof v === 'string') {
+    const t = v.trim().toLowerCase();
+    if (t === 'false' || t === '0' || t === 'no' || t === 'off') return false;
+    if (t === 'true' || t === '1' || t === 'si' || t === 'sí' || t === 'yes' || t === 'on') return true;
+  }
+  return !!v;
+};
+
 exports.list = async (req, res) => {
   try {
     const where = {};
@@ -41,7 +61,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -65,7 +85,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'modulos', 'horarios_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'modulos', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -101,6 +121,13 @@ exports.create = async (req, res) => {
     const modalidad = san(body.modalidad);
     const razones_para_estudiar = san(body.razones_para_estudiar);
     const publico_objetivo = san(body.publico_objetivo);
+    const precio = parseNullableDecimal(body.precio);
+    const descuento = parseNullableDecimal(body.descuento);
+    const oferta = parseBooleanish(body.oferta);
+
+    if (typeof body.descuento !== 'undefined' && typeof descuento === 'undefined') {
+      return res.status(400).json({ message: 'descuento must be a valid number' });
+    }
 
     let temario = body.temario;
     if (Array.isArray(temario)) temario = JSON.stringify(temario);
@@ -134,6 +161,9 @@ exports.create = async (req, res) => {
     if (typeof modalidad !== 'undefined') payload.modalidad = modalidad;
     if (typeof razones_para_estudiar !== 'undefined') payload.razones_para_estudiar = razones_para_estudiar;
     if (typeof publico_objetivo !== 'undefined') payload.publico_objetivo = publico_objetivo;
+    if (typeof precio !== 'undefined') payload.precio = precio;
+    if (typeof descuento !== 'undefined') payload.descuento = descuento;
+    if (typeof oferta !== 'undefined') payload.oferta = oferta;
     if (typeof temario !== 'undefined') payload.temario = temario;
     if (typeof modulos !== 'undefined') payload.modulos = modulos;
 
@@ -151,6 +181,13 @@ exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, subtitle, description, type, thumbnail_media_id, horarios_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
+    const precio = parseNullableDecimal(req.body.precio);
+    const descuento = parseNullableDecimal(req.body.descuento);
+    const oferta = parseBooleanish(req.body.oferta);
+
+    if (typeof req.body.descuento !== 'undefined' && typeof descuento === 'undefined') {
+      return res.status(400).json({ message: 'descuento must be a valid number' });
+    }
     let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     let modulos = req.body && typeof req.body.modulos !== 'undefined' ? req.body.modulos : undefined;
     const course = await db.Course.findByPk(id);
@@ -175,6 +212,9 @@ exports.update = async (req, res) => {
     if (typeof modalidad !== 'undefined') updates.modalidad = modalidad;
     if (typeof razones_para_estudiar !== 'undefined') updates.razones_para_estudiar = razones_para_estudiar;
     if (typeof publico_objetivo !== 'undefined') updates.publico_objetivo = publico_objetivo;
+    if (typeof precio !== 'undefined') updates.precio = precio;
+    if (typeof descuento !== 'undefined') updates.descuento = descuento;
+    if (typeof oferta !== 'undefined') updates.oferta = oferta;
     if (typeof temario !== 'undefined') {
       let t = temario;
       if (Array.isArray(t) || (t && typeof t === 'object')) t = JSON.stringify(t);
