@@ -22,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     precio: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     descuento: { type: DataTypes.DECIMAL(5, 2), allowNull: true },
     oferta: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    matricula: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     modulos: { type: DataTypes.JSON },
     horarios_media_id: { type: DataTypes.INTEGER },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },

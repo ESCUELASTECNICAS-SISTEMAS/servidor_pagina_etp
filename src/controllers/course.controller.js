@@ -61,7 +61,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -85,7 +85,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'modulos', 'horarios_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'horarios_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -124,6 +124,7 @@ exports.create = async (req, res) => {
     const precio = parseNullableDecimal(body.precio);
     const descuento = parseNullableDecimal(body.descuento);
     const oferta = parseBooleanish(body.oferta);
+    const matricula = parseNullableDecimal(body.matricula);
 
     if (typeof body.descuento !== 'undefined' && typeof descuento === 'undefined') {
       return res.status(400).json({ message: 'descuento must be a valid number' });
@@ -164,6 +165,7 @@ exports.create = async (req, res) => {
     if (typeof precio !== 'undefined') payload.precio = precio;
     if (typeof descuento !== 'undefined') payload.descuento = descuento;
     if (typeof oferta !== 'undefined') payload.oferta = oferta;
+    if (typeof matricula !== 'undefined') payload.matricula = matricula;
     if (typeof temario !== 'undefined') payload.temario = temario;
     if (typeof modulos !== 'undefined') payload.modulos = modulos;
 
@@ -184,6 +186,7 @@ exports.update = async (req, res) => {
     const precio = parseNullableDecimal(req.body.precio);
     const descuento = parseNullableDecimal(req.body.descuento);
     const oferta = parseBooleanish(req.body.oferta);
+    const matricula = parseNullableDecimal(req.body.matricula);
 
     if (typeof req.body.descuento !== 'undefined' && typeof descuento === 'undefined') {
       return res.status(400).json({ message: 'descuento must be a valid number' });
@@ -214,6 +217,7 @@ exports.update = async (req, res) => {
     if (typeof publico_objetivo !== 'undefined') updates.publico_objetivo = publico_objetivo;
     if (typeof precio !== 'undefined') updates.precio = precio;
     if (typeof descuento !== 'undefined') updates.descuento = descuento;
+    if (typeof matricula !== 'undefined') updates.matricula = matricula;
     if (typeof oferta !== 'undefined') updates.oferta = oferta;
     if (typeof temario !== 'undefined') {
       let t = temario;
