@@ -3,6 +3,8 @@ module.exports = (sequelize, DataTypes) => {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     media_id: { type: DataTypes.INTEGER },
     title: { type: DataTypes.STRING(255) },
+    subtitle: { type: DataTypes.STRING(255) },
+    description: { type: DataTypes.TEXT },
     order_index: { type: DataTypes.INTEGER, defaultValue: 0 },
     active: { type: DataTypes.BOOLEAN, defaultValue: true }
   }, {
