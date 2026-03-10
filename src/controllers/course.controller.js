@@ -52,20 +52,6 @@ const toOptionalPositiveInt = (v) => {
   return n;
 };
 
-const resolveMediaIdFromInput = async (mediaIdInput, mediaUrlInput, altTextInput) => {
-  const mediaId = toOptionalPositiveInt(mediaIdInput);
-  if (typeof mediaId !== 'undefined') return mediaId;
-
-  const mediaUrl = typeof mediaUrlInput === 'string' ? mediaUrlInput.trim() : '';
-  if (!mediaUrl) return undefined;
-
-  const media = await db.Media.create({
-    url: mediaUrl,
-    alt_text: typeof altTextInput === 'string' && altTextInput.trim() !== '' ? altTextInput.trim() : null
-  });
-  return media.id;
-};
-
 exports.list = async (req, res) => {
   try {
     const where = {};
@@ -153,6 +139,13 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'descuento must be a valid number' });
     }
 
+    if (typeof body.extra_media_id !== 'undefined') {
+      const extraMediaId = toOptionalPositiveInt(body.extra_media_id);
+      if (typeof extraMediaId === 'undefined') {
+        return res.status(400).json({ message: 'extra_media_id must be a positive integer' });
+      }
+    }
+
     let temario = body.temario;
     if (Array.isArray(temario)) temario = JSON.stringify(temario);
     if (typeof temario === 'string' && temario.trim() === '') temario = undefined;
@@ -173,11 +166,7 @@ exports.create = async (req, res) => {
     payload.type = type;
     if (typeof body.thumbnail_media_id !== 'undefined') payload.thumbnail_media_id = body.thumbnail_media_id;
     if (typeof body.horarios_media_id !== 'undefined') payload.horarios_media_id = body.horarios_media_id;
-    const extraMediaId = await resolveMediaIdFromInput(
-      body.extra_media_id,
-      body.extra_media_url,
-      body.extra_media_alt_text
-    );
+    const extraMediaId = toOptionalPositiveInt(body.extra_media_id);
     if (typeof extraMediaId !== 'undefined') payload.extra_media_id = extraMediaId;
     if (typeof slug !== 'undefined') payload.slug = slug;
     if (typeof body.published !== 'undefined') payload.published = !!body.published;
@@ -220,6 +209,12 @@ exports.update = async (req, res) => {
     if (typeof req.body.descuento !== 'undefined' && typeof descuento === 'undefined') {
       return res.status(400).json({ message: 'descuento must be a valid number' });
     }
+    if (typeof req.body.extra_media_id !== 'undefined' && req.body.extra_media_id !== null) {
+      const extraMediaId = toOptionalPositiveInt(req.body.extra_media_id);
+      if (typeof extraMediaId === 'undefined') {
+        return res.status(400).json({ message: 'extra_media_id must be a positive integer' });
+      }
+    }
     let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     let modulos = req.body && typeof req.body.modulos !== 'undefined' ? req.body.modulos : undefined;
     const course = await db.Course.findByPk(id);
@@ -232,15 +227,9 @@ exports.update = async (req, res) => {
     if (typeof type !== 'undefined') updates.type = type;
     if (typeof thumbnail_media_id !== 'undefined') updates.thumbnail_media_id = thumbnail_media_id;
     if (typeof horarios_media_id !== 'undefined') updates.horarios_media_id = horarios_media_id;
-    const hasExtraMediaInput =
-      Object.prototype.hasOwnProperty.call(req.body, 'extra_media_id') ||
-      Object.prototype.hasOwnProperty.call(req.body, 'extra_media_url');
+    const hasExtraMediaInput = Object.prototype.hasOwnProperty.call(req.body, 'extra_media_id');
     if (hasExtraMediaInput) {
-      const extraMediaId = await resolveMediaIdFromInput(
-        req.body.extra_media_id,
-        req.body.extra_media_url,
-        req.body.extra_media_alt_text
-      );
+      const extraMediaId = toOptionalPositiveInt(req.body.extra_media_id);
 
       if (
         req.body.extra_media_id === null ||
