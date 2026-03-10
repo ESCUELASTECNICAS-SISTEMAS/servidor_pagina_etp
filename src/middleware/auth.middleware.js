@@ -13,7 +13,7 @@ async function authenticate(req, res, next) {
     const user = await db.User.findByPk(payload.id);
     if (!user) return res.status(401).json({ message: 'invalid token' });
     if (user.active === false) return res.status(403).json({ message: 'user disabled' });
-    req.user = { id: user.id, email: user.email, role: user.role };
+    req.user = { id: user.id, email: user.email, role: user.role, sucursal_id: user.sucursal_id || null };
     return next();
   } catch (err) {
     console.error('auth error', err);
