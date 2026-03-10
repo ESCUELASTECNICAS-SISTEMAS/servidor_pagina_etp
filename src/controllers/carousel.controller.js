@@ -64,6 +64,8 @@ exports.update = async (req, res) => {
   }
 };
 
+
+
 exports.updateText = async (req, res) => {
   try {
     const { id } = req.params;
