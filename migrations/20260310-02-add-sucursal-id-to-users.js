@@ -17,4 +17,5 @@ module.exports = {
     await queryInterface.removeIndex('users', ['sucursal_id']);
     await queryInterface.removeColumn('users', 'sucursal_id');
   }
+  
 };
