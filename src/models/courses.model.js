@@ -16,6 +16,8 @@ module.exports = (sequelize, DataTypes) => {
     mision: { type: DataTypes.TEXT },
     vision: { type: DataTypes.TEXT },
     modalidad: { type: DataTypes.STRING(64) },
+    is_virtual: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    is_presencial: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     temario: { type: DataTypes.TEXT },
     razones_para_estudiar: { type: DataTypes.TEXT },
     publico_objetivo: { type: DataTypes.TEXT },

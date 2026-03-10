@@ -61,20 +61,38 @@ const normalizeModalidad = (v) => {
   return t;
 };
 
+const flagsFromModalidad = (modalidad) => {
+  const m = normalizeModalidad(modalidad);
+  if (m === 'virtual') return { is_virtual: true, is_presencial: false };
+  if (m === 'presencial') return { is_virtual: false, is_presencial: true };
+  if (m === 'hibrido') return { is_virtual: true, is_presencial: true };
+  return undefined;
+};
+
+const modalidadFromFlags = (isVirtual, isPresencial) => {
+  if (isVirtual && isPresencial) return 'hibrido';
+  if (isVirtual) return 'virtual';
+  if (isPresencial) return 'presencial';
+  return null;
+};
+
 exports.list = async (req, res) => {
   try {
     const where = {};
     if (req.query.type) where.type = req.query.type;
-    if (req.query.modalidad) {
-      where.modalidad = normalizeModalidad(req.query.modalidad) || req.query.modalidad;
-    }
     if (typeof req.query.virtual !== 'undefined') {
       const v = req.query.virtual.toString().toLowerCase();
-      const isVirtual = !(v === 'false' || v === '0' || v === 'no' || v === 'off');
-      if (isVirtual) {
-        where.modalidad = ['virtual', 'hibrido'];
-      } else {
-        where.modalidad = 'presencial';
+      where.is_virtual = !(v === 'false' || v === '0' || v === 'no' || v === 'off');
+    }
+    if (typeof req.query.presencial !== 'undefined') {
+      const v = req.query.presencial.toString().toLowerCase();
+      where.is_presencial = !(v === 'false' || v === '0' || v === 'no' || v === 'off');
+    }
+    if (req.query.modalidad) {
+      const flags = flagsFromModalidad(req.query.modalidad);
+      if (flags) {
+        where.is_virtual = flags.is_virtual;
+        where.is_presencial = flags.is_presencial;
       }
     }
     if (typeof req.query.published !== 'undefined') {
@@ -91,7 +109,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -115,7 +133,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -149,6 +167,8 @@ exports.create = async (req, res) => {
     const mision = san(body.mision);
     const vision = san(body.vision);
     const modalidad = san(body.modalidad);
+    const is_virtual = parseBooleanish(body.is_virtual);
+    const is_presencial = parseBooleanish(body.is_presencial);
     const razones_para_estudiar = san(body.razones_para_estudiar);
     const publico_objetivo = san(body.publico_objetivo);
     const precio = parseNullableDecimal(body.precio);
@@ -198,7 +218,24 @@ exports.create = async (req, res) => {
     if (typeof perfil_egresado !== 'undefined') payload.perfil_egresado = perfil_egresado;
     if (typeof mision !== 'undefined') payload.mision = mision;
     if (typeof vision !== 'undefined') payload.vision = vision;
-    if (typeof modalidad !== 'undefined') payload.modalidad = normalizeModalidad(modalidad) || modalidad;
+    if (typeof is_virtual !== 'undefined') payload.is_virtual = is_virtual;
+    if (typeof is_presencial !== 'undefined') payload.is_presencial = is_presencial;
+
+    if (typeof modalidad !== 'undefined' && (typeof is_virtual === 'undefined' || typeof is_presencial === 'undefined')) {
+      const flags = flagsFromModalidad(modalidad);
+      if (flags) {
+        if (typeof is_virtual === 'undefined') payload.is_virtual = flags.is_virtual;
+        if (typeof is_presencial === 'undefined') payload.is_presencial = flags.is_presencial;
+      }
+    }
+
+    if (typeof payload.is_virtual !== 'undefined' || typeof payload.is_presencial !== 'undefined') {
+      const finalVirtual = typeof payload.is_virtual === 'undefined' ? false : payload.is_virtual;
+      const finalPresencial = typeof payload.is_presencial === 'undefined' ? false : payload.is_presencial;
+      payload.modalidad = modalidadFromFlags(finalVirtual, finalPresencial);
+    } else if (typeof modalidad !== 'undefined') {
+      payload.modalidad = normalizeModalidad(modalidad) || modalidad;
+    }
     if (typeof razones_para_estudiar !== 'undefined') payload.razones_para_estudiar = razones_para_estudiar;
     if (typeof publico_objetivo !== 'undefined') payload.publico_objetivo = publico_objetivo;
     if (typeof precio !== 'undefined') payload.precio = precio;
@@ -222,6 +259,8 @@ exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, subtitle, description, type, thumbnail_media_id, horarios_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
+    const is_virtual = parseBooleanish(req.body.is_virtual);
+    const is_presencial = parseBooleanish(req.body.is_presencial);
     const precio = parseNullableDecimal(req.body.precio);
     const descuento = parseNullableDecimal(req.body.descuento);
     const oferta = parseBooleanish(req.body.oferta);
@@ -270,7 +309,25 @@ exports.update = async (req, res) => {
     if (typeof perfil_egresado !== 'undefined') updates.perfil_egresado = perfil_egresado;
     if (typeof mision !== 'undefined') updates.mision = mision;
     if (typeof vision !== 'undefined') updates.vision = vision;
-    if (typeof modalidad !== 'undefined') updates.modalidad = normalizeModalidad(modalidad) || modalidad;
+    if (typeof is_virtual !== 'undefined') updates.is_virtual = is_virtual;
+    if (typeof is_presencial !== 'undefined') updates.is_presencial = is_presencial;
+    if (typeof modalidad !== 'undefined' && (typeof is_virtual === 'undefined' || typeof is_presencial === 'undefined')) {
+      const flags = flagsFromModalidad(modalidad);
+      if (flags) {
+        if (typeof is_virtual === 'undefined') updates.is_virtual = flags.is_virtual;
+        if (typeof is_presencial === 'undefined') updates.is_presencial = flags.is_presencial;
+      }
+    }
+
+    const nextVirtual = typeof updates.is_virtual !== 'undefined' ? updates.is_virtual : course.is_virtual;
+    const nextPresencial = typeof updates.is_presencial !== 'undefined' ? updates.is_presencial : course.is_presencial;
+    if (
+      typeof updates.is_virtual !== 'undefined' ||
+      typeof updates.is_presencial !== 'undefined' ||
+      typeof modalidad !== 'undefined'
+    ) {
+      updates.modalidad = modalidadFromFlags(nextVirtual, nextPresencial);
+    }
     if (typeof razones_para_estudiar !== 'undefined') updates.razones_para_estudiar = razones_para_estudiar;
     if (typeof publico_objetivo !== 'undefined') updates.publico_objetivo = publico_objetivo;
     if (typeof precio !== 'undefined') updates.precio = precio;
