@@ -25,6 +25,7 @@ module.exports = (sequelize, DataTypes) => {
     matricula: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     modulos: { type: DataTypes.JSON },
     horarios_media_id: { type: DataTypes.INTEGER },
+    extra_media_id: { type: DataTypes.INTEGER },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
   }, {
@@ -35,6 +36,7 @@ module.exports = (sequelize, DataTypes) => {
   Course.associate = function(models) {
     Course.belongsTo(models.Media, { foreignKey: 'thumbnail_media_id', as: 'thumbnail' });
     Course.belongsTo(models.Media, { foreignKey: 'horarios_media_id', as: 'horarios' });
+    Course.belongsTo(models.Media, { foreignKey: 'extra_media_id', as: 'extraImage' });
     Course.belongsToMany(models.Docente, { through: models.CourseDocente, foreignKey: 'course_id', otherKey: 'docente_id', as: 'docentes' });
     Course.hasMany(models.Certificado, { foreignKey: 'course_id', as: 'certificados' });
     Course.hasMany(models.Seminario, { foreignKey: 'course_id', as: 'seminarios' });

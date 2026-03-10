@@ -5,6 +5,7 @@ const getIncludes = () => {
   return [
     { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Media, as: 'horarios', attributes: ['id', 'url', 'alt_text'] },
+    { model: db.Media, as: 'extraImage', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Docente, as: 'docentes', attributes: ['id', 'nombre', 'especialidad', 'bio', 'email'], through: { attributes: ['rol'] }, include: [{ model: db.Media, as: 'foto', attributes: ['id', 'url', 'alt_text'] }] },
     { model: db.Certificado, as: 'certificados', attributes: ['id', 'titulo', 'descripcion', 'institucion_emisora', 'orden', 'active'], required: false },
     { model: db.Seminario, as: 'seminarios', attributes: ['id', 'titulo', 'descripcion', 'fecha', 'duracion_horas', 'orden'], required: false },
@@ -43,6 +44,28 @@ const parseBooleanish = (v) => {
   return !!v;
 };
 
+const toOptionalPositiveInt = (v) => {
+  if (typeof v === 'undefined' || v === null) return undefined;
+  if (typeof v === 'string' && v.trim() === '') return undefined;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n <= 0) return undefined;
+  return n;
+};
+
+const resolveMediaIdFromInput = async (mediaIdInput, mediaUrlInput, altTextInput) => {
+  const mediaId = toOptionalPositiveInt(mediaIdInput);
+  if (typeof mediaId !== 'undefined') return mediaId;
+
+  const mediaUrl = typeof mediaUrlInput === 'string' ? mediaUrlInput.trim() : '';
+  if (!mediaUrl) return undefined;
+
+  const media = await db.Media.create({
+    url: mediaUrl,
+    alt_text: typeof altTextInput === 'string' && altTextInput.trim() !== '' ? altTextInput.trim() : null
+  });
+  return media.id;
+};
+
 exports.list = async (req, res) => {
   try {
     const where = {};
@@ -61,7 +84,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -85,7 +108,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'horarios_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -150,6 +173,12 @@ exports.create = async (req, res) => {
     payload.type = type;
     if (typeof body.thumbnail_media_id !== 'undefined') payload.thumbnail_media_id = body.thumbnail_media_id;
     if (typeof body.horarios_media_id !== 'undefined') payload.horarios_media_id = body.horarios_media_id;
+    const extraMediaId = await resolveMediaIdFromInput(
+      body.extra_media_id,
+      body.extra_media_url,
+      body.extra_media_alt_text
+    );
+    if (typeof extraMediaId !== 'undefined') payload.extra_media_id = extraMediaId;
     if (typeof slug !== 'undefined') payload.slug = slug;
     if (typeof body.published !== 'undefined') payload.published = !!body.published;
     if (typeof body.hours !== 'undefined') payload.hours = body.hours;
@@ -203,6 +232,25 @@ exports.update = async (req, res) => {
     if (typeof type !== 'undefined') updates.type = type;
     if (typeof thumbnail_media_id !== 'undefined') updates.thumbnail_media_id = thumbnail_media_id;
     if (typeof horarios_media_id !== 'undefined') updates.horarios_media_id = horarios_media_id;
+    const hasExtraMediaInput =
+      Object.prototype.hasOwnProperty.call(req.body, 'extra_media_id') ||
+      Object.prototype.hasOwnProperty.call(req.body, 'extra_media_url');
+    if (hasExtraMediaInput) {
+      const extraMediaId = await resolveMediaIdFromInput(
+        req.body.extra_media_id,
+        req.body.extra_media_url,
+        req.body.extra_media_alt_text
+      );
+
+      if (
+        req.body.extra_media_id === null ||
+        (typeof req.body.extra_media_id === 'string' && req.body.extra_media_id.trim() === '')
+      ) {
+        updates.extra_media_id = null;
+      } else if (typeof extraMediaId !== 'undefined') {
+        updates.extra_media_id = extraMediaId;
+      }
+    }
     if (typeof slug !== 'undefined') updates.slug = slug;
     if (typeof published !== 'undefined') updates.published = !!published;
     if (typeof hours !== 'undefined') updates.hours = hours;
