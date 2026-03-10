@@ -6,6 +6,7 @@ const getIncludes = () => {
     { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Media, as: 'horarios', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Media, as: 'extraImage', attributes: ['id', 'url', 'alt_text'] },
+    { model: db.Sucursal, as: 'sucursales', attributes: ['id', 'nombre', 'ciudad', 'direccion', 'telefono', 'email', 'active'], through: { attributes: ['id', 'active', 'created_at'] }, required: false },
     { model: db.Docente, as: 'docentes', attributes: ['id', 'nombre', 'especialidad', 'bio', 'email'], through: { attributes: ['rol'] }, include: [{ model: db.Media, as: 'foto', attributes: ['id', 'url', 'alt_text'] }] },
     { model: db.Certificado, as: 'certificados', attributes: ['id', 'titulo', 'descripcion', 'institucion_emisora', 'orden', 'active'], required: false },
     { model: db.Seminario, as: 'seminarios', attributes: ['id', 'titulo', 'descripcion', 'fecha', 'duracion_horas', 'orden'], required: false },
@@ -74,6 +75,31 @@ const modalidadFromFlags = (isVirtual, isPresencial) => {
   if (isVirtual) return 'virtual';
   if (isPresencial) return 'presencial';
   return null;
+};
+
+const parseSucursalIds = (value) => {
+  if (typeof value === 'undefined' || value === null) return undefined;
+  if (!Array.isArray(value)) return null;
+
+  const uniq = [...new Set(value.map(v => Number(v)))];
+  if (uniq.some(v => !Number.isInteger(v) || v <= 0)) return null;
+  return uniq;
+};
+
+const ensureValidSucursalIds = async (sucursalIds) => {
+  if (!Array.isArray(sucursalIds) || sucursalIds.length === 0) return;
+  const rows = await db.Sucursal.findAll({ where: { id: sucursalIds, active: true }, attributes: ['id'] });
+  if (rows.length !== sucursalIds.length) {
+    throw new Error('invalid_sucursal_ids');
+  }
+};
+
+const syncCourseSucursales = async (courseId, sucursalIds) => {
+  await db.CourseSucursal.destroy({ where: { course_id: courseId } });
+  if (!Array.isArray(sucursalIds) || sucursalIds.length === 0) return;
+  await db.CourseSucursal.bulkCreate(
+    sucursalIds.map(sucursalId => ({ course_id: courseId, sucursal_id: sucursalId, active: true }))
+  );
 };
 
 exports.list = async (req, res) => {
@@ -167,6 +193,7 @@ exports.create = async (req, res) => {
     const mision = san(body.mision);
     const vision = san(body.vision);
     const modalidad = san(body.modalidad);
+    const sucursal_ids = parseSucursalIds(body.sucursal_ids);
     const is_virtual = parseBooleanish(body.is_virtual);
     const is_presencial = parseBooleanish(body.is_presencial);
     const razones_para_estudiar = san(body.razones_para_estudiar);
@@ -185,6 +212,12 @@ exports.create = async (req, res) => {
       if (typeof extraMediaId === 'undefined') {
         return res.status(400).json({ message: 'extra_media_id must be a positive integer' });
       }
+    }
+    if (typeof body.sucursal_ids !== 'undefined' && sucursal_ids === null) {
+      return res.status(400).json({ message: 'sucursal_ids must be an array of positive integers' });
+    }
+    if (Array.isArray(sucursal_ids)) {
+      await ensureValidSucursalIds(sucursal_ids);
     }
 
     let temario = body.temario;
@@ -245,10 +278,31 @@ exports.create = async (req, res) => {
     if (typeof temario !== 'undefined') payload.temario = temario;
     if (typeof modulos !== 'undefined') payload.modulos = modulos;
 
+    if (typeof body.sucursal_id !== 'undefined') {
+      const sucursalPrincipal = toOptionalPositiveInt(body.sucursal_id);
+      if (typeof sucursalPrincipal === 'undefined') {
+        return res.status(400).json({ message: 'sucursal_id must be a positive integer' });
+      }
+      payload.sucursal_id = sucursalPrincipal;
+    }
+    if (Array.isArray(sucursal_ids) && sucursal_ids.length > 0 && typeof payload.sucursal_id === 'undefined') {
+      payload.sucursal_id = sucursal_ids[0];
+    }
+
     const course = await db.Course.create(payload);
-    return res.status(201).json(course);
+    if (Array.isArray(sucursal_ids)) {
+      await syncCourseSucursales(course.id, sucursal_ids);
+    }
+    const created = await db.Course.findByPk(course.id, {
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'sucursal_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      include: getIncludes()
+    });
+    return res.status(201).json(created);
   } catch (err) {
     console.error(err);
+    if (err && err.message === 'invalid_sucursal_ids') {
+      return res.status(400).json({ message: 'one or more sucursal_ids are invalid or inactive' });
+    }
     // Return error message/details to help debugging in development
     const details = err && err.errors ? err.errors.map(e => e.message) : null;
     return res.status(500).json({ message: 'server error', error: err.message, details });
@@ -259,6 +313,7 @@ exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, subtitle, description, type, thumbnail_media_id, horarios_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
+    const sucursal_ids = parseSucursalIds(req.body.sucursal_ids);
     const is_virtual = parseBooleanish(req.body.is_virtual);
     const is_presencial = parseBooleanish(req.body.is_presencial);
     const precio = parseNullableDecimal(req.body.precio);
@@ -274,6 +329,12 @@ exports.update = async (req, res) => {
       if (typeof extraMediaId === 'undefined') {
         return res.status(400).json({ message: 'extra_media_id must be a positive integer' });
       }
+    }
+    if (typeof req.body.sucursal_ids !== 'undefined' && sucursal_ids === null) {
+      return res.status(400).json({ message: 'sucursal_ids must be an array of positive integers' });
+    }
+    if (Array.isArray(sucursal_ids)) {
+      await ensureValidSucursalIds(sucursal_ids);
     }
     let temario = req.body && typeof req.body.temario !== 'undefined' ? req.body.temario : undefined;
     let modulos = req.body && typeof req.body.modulos !== 'undefined' ? req.body.modulos : undefined;
@@ -348,10 +409,31 @@ exports.update = async (req, res) => {
     }
     if (typeof active !== 'undefined') updates.active = !!active;
 
+    if (typeof req.body.sucursal_id !== 'undefined') {
+      const sucursalPrincipal = toOptionalPositiveInt(req.body.sucursal_id);
+      if (typeof sucursalPrincipal === 'undefined') {
+        return res.status(400).json({ message: 'sucursal_id must be a positive integer' });
+      }
+      updates.sucursal_id = sucursalPrincipal;
+    }
+    if (Array.isArray(sucursal_ids) && sucursal_ids.length > 0) {
+      updates.sucursal_id = sucursal_ids[0];
+    }
+
     await course.update(updates);
-    return res.json(course);
+    if (Array.isArray(sucursal_ids)) {
+      await syncCourseSucursales(course.id, sucursal_ids);
+    }
+    const updated = await db.Course.findByPk(course.id, {
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'sucursal_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      include: getIncludes()
+    });
+    return res.json(updated);
   } catch (err) {
     console.error(err);
+    if (err && err.message === 'invalid_sucursal_ids') {
+      return res.status(400).json({ message: 'one or more sucursal_ids are invalid or inactive' });
+    }
     return res.status(500).json({ message: 'server error' });
   }
 };
@@ -400,6 +482,59 @@ exports.removeDocente = async (req, res) => {
     const { id, docenteId } = req.params;
     const deleted = await db.CourseDocente.destroy({ where: { course_id: id, docente_id: docenteId } });
     if (!deleted) return res.status(404).json({ message: 'relation not found' });
+    return res.json({ message: 'removed' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'server error' });
+  }
+};
+
+// ===================== SUCURSALES =====================
+exports.setSucursales = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sucursal_ids = parseSucursalIds(req.body.sucursal_ids);
+    if (sucursal_ids === null) {
+      return res.status(400).json({ message: 'sucursal_ids must be an array of positive integers' });
+    }
+
+    const course = await db.Course.findByPk(id);
+    if (!course) return res.status(404).json({ message: 'course not found' });
+
+    const ids = Array.isArray(sucursal_ids) ? sucursal_ids : [];
+    await ensureValidSucursalIds(ids);
+    await syncCourseSucursales(course.id, ids);
+
+    if (ids.length > 0) {
+      await course.update({ sucursal_id: ids[0] });
+    }
+
+    const refreshed = await db.Course.findByPk(course.id, {
+      attributes: ['id', 'title', 'sucursal_id', 'active', 'created_at'],
+      include: [{ model: db.Sucursal, as: 'sucursales', attributes: ['id', 'nombre', 'ciudad', 'direccion', 'telefono', 'email', 'active'], through: { attributes: ['id', 'active', 'created_at'] }, required: false }]
+    });
+    return res.json(refreshed);
+  } catch (err) {
+    console.error(err);
+    if (err && err.message === 'invalid_sucursal_ids') {
+      return res.status(400).json({ message: 'one or more sucursal_ids are invalid or inactive' });
+    }
+    return res.status(500).json({ message: 'server error' });
+  }
+};
+
+exports.removeSucursal = async (req, res) => {
+  try {
+    const { id, sucursalId } = req.params;
+    const course = await db.Course.findByPk(id);
+    if (!course) return res.status(404).json({ message: 'course not found' });
+
+    const deleted = await db.CourseSucursal.destroy({ where: { course_id: id, sucursal_id: sucursalId } });
+    if (!deleted) return res.status(404).json({ message: 'relation not found' });
+
+    const first = await db.CourseSucursal.findOne({ where: { course_id: id }, order: [['id', 'ASC']] });
+    await course.update({ sucursal_id: first ? first.sucursal_id : null });
+
     return res.json({ message: 'removed' });
   } catch (err) {
     console.error(err);

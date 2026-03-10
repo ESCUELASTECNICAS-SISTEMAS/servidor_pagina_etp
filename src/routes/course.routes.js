@@ -14,6 +14,10 @@ router.delete('/:id', authenticate, requireAdmin, controller.remove);
 router.post('/:id/docentes', authenticate, requireAdmin, controller.addDocente);
 router.delete('/:id/docentes/:docenteId', authenticate, requireAdmin, controller.removeDocente);
 
+// Sucursales de un curso
+router.put('/:id/sucursales', authenticate, requireAdmin, controller.setSucursales);
+router.delete('/:id/sucursales/:sucursalId', authenticate, requireAdmin, controller.removeSucursal);
+
 // Certificados de un curso
 router.post('/:id/certificados', authenticate, requireAdmin, controller.addCertificado);
 router.put('/:id/certificados/:certId', authenticate, requireAdmin, controller.updateCertificado);

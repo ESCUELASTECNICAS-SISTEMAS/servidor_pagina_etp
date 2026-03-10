@@ -26,6 +26,7 @@ module.exports = (sequelize, DataTypes) => {
     oferta: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     matricula: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     modulos: { type: DataTypes.JSON },
+    sucursal_id: { type: DataTypes.INTEGER },
     horarios_media_id: { type: DataTypes.INTEGER },
     extra_media_id: { type: DataTypes.INTEGER },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
@@ -39,7 +40,9 @@ module.exports = (sequelize, DataTypes) => {
     Course.belongsTo(models.Media, { foreignKey: 'thumbnail_media_id', as: 'thumbnail' });
     Course.belongsTo(models.Media, { foreignKey: 'horarios_media_id', as: 'horarios' });
     Course.belongsTo(models.Media, { foreignKey: 'extra_media_id', as: 'extraImage' });
+    Course.belongsTo(models.Sucursal, { foreignKey: 'sucursal_id', as: 'sucursalPrincipal' });
     Course.belongsToMany(models.Docente, { through: models.CourseDocente, foreignKey: 'course_id', otherKey: 'docente_id', as: 'docentes' });
+    Course.belongsToMany(models.Sucursal, { through: models.CourseSucursal, foreignKey: 'course_id', otherKey: 'sucursal_id', as: 'sucursales' });
     Course.hasMany(models.Certificado, { foreignKey: 'course_id', as: 'certificados' });
     Course.hasMany(models.Seminario, { foreignKey: 'course_id', as: 'seminarios' });
     Course.hasMany(models.Convenio, { foreignKey: 'course_id', as: 'convenios' });
