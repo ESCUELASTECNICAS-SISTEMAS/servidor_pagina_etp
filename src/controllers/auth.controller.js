@@ -21,7 +21,7 @@ exports.login = async (req, res) => {
     if (!match) return res.status(401).json({ message: 'invalid credentials' });
 
     const payload = { id: user.id, email: user.email, role: user.role };
-    const token = jwt.sign(payload, JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
+    const token = jwt.sign(payload, JWT_SECRET || 'dev-secret', { expiresIn: '24h' });
 
     return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
@@ -44,7 +44,7 @@ exports.register = async (req, res) => {
     const user = await db.User.create({ name: name || null, email, password_hash, role: role || 'cliente' });
 
     const payload = { id: user.id, email: user.email, role: user.role };
-    const token = jwt.sign(payload, JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
+    const token = jwt.sign(payload, JWT_SECRET || 'dev-secret', { expiresIn: '24h' });
 
     return res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
