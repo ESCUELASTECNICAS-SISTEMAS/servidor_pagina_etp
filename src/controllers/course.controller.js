@@ -52,10 +52,31 @@ const toOptionalPositiveInt = (v) => {
   return n;
 };
 
+const normalizeModalidad = (v) => {
+  if (typeof v !== 'string') return undefined;
+  const t = v.trim().toLowerCase();
+  if (!t) return undefined;
+  if (t === 'híbrido') return 'hibrido';
+  if (t === 'mixto') return 'hibrido';
+  return t;
+};
+
 exports.list = async (req, res) => {
   try {
     const where = {};
     if (req.query.type) where.type = req.query.type;
+    if (req.query.modalidad) {
+      where.modalidad = normalizeModalidad(req.query.modalidad) || req.query.modalidad;
+    }
+    if (typeof req.query.virtual !== 'undefined') {
+      const v = req.query.virtual.toString().toLowerCase();
+      const isVirtual = !(v === 'false' || v === '0' || v === 'no' || v === 'off');
+      if (isVirtual) {
+        where.modalidad = ['virtual', 'hibrido'];
+      } else {
+        where.modalidad = 'presencial';
+      }
+    }
     if (typeof req.query.published !== 'undefined') {
       const v = req.query.published.toString().toLowerCase();
       where.published = !(v === 'false' || v === '0');
@@ -177,7 +198,7 @@ exports.create = async (req, res) => {
     if (typeof perfil_egresado !== 'undefined') payload.perfil_egresado = perfil_egresado;
     if (typeof mision !== 'undefined') payload.mision = mision;
     if (typeof vision !== 'undefined') payload.vision = vision;
-    if (typeof modalidad !== 'undefined') payload.modalidad = modalidad;
+    if (typeof modalidad !== 'undefined') payload.modalidad = normalizeModalidad(modalidad) || modalidad;
     if (typeof razones_para_estudiar !== 'undefined') payload.razones_para_estudiar = razones_para_estudiar;
     if (typeof publico_objetivo !== 'undefined') payload.publico_objetivo = publico_objetivo;
     if (typeof precio !== 'undefined') payload.precio = precio;
@@ -249,7 +270,7 @@ exports.update = async (req, res) => {
     if (typeof perfil_egresado !== 'undefined') updates.perfil_egresado = perfil_egresado;
     if (typeof mision !== 'undefined') updates.mision = mision;
     if (typeof vision !== 'undefined') updates.vision = vision;
-    if (typeof modalidad !== 'undefined') updates.modalidad = modalidad;
+    if (typeof modalidad !== 'undefined') updates.modalidad = normalizeModalidad(modalidad) || modalidad;
     if (typeof razones_para_estudiar !== 'undefined') updates.razones_para_estudiar = razones_para_estudiar;
     if (typeof publico_objetivo !== 'undefined') updates.publico_objetivo = publico_objetivo;
     if (typeof precio !== 'undefined') updates.precio = precio;
