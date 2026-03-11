@@ -706,3 +706,84 @@ exports.removeConvenio = async (req, res) => {
     return res.status(500).json({ message: 'server error' });
   }
 };
+
+// ===================== EXTRA MEDIA (imagenes adicionales) =====================
+exports.addExtraMedia = async (req, res) => {
+  try {
+    const { id } = req.params; // course_id
+    const media_ids = req.body && Array.isArray(req.body.media_ids) ? req.body.media_ids.map(Number) : null;
+    if (!Array.isArray(media_ids) || media_ids.length === 0) return res.status(400).json({ message: 'media_ids must be a non-empty array' });
+
+    const course = await db.Course.findByPk(id);
+    if (!course) return res.status(404).json({ message: 'course not found' });
+
+    const uniq = [...new Set(media_ids)];
+    if (uniq.some(v => !Number.isInteger(v) || v <= 0)) return res.status(400).json({ message: 'media_ids must contain positive integers' });
+
+    const medias = await db.Media.findAll({ where: { id: uniq, active: true }, attributes: ['id'] });
+    if (medias.length !== uniq.length) return res.status(400).json({ message: 'one or more media_ids are invalid or inactive' });
+
+    // replace existing extra media for the course
+    await db.CourseExtraMedia.destroy({ where: { course_id: id } });
+
+    const bulk = uniq.map((media_id, idx) => ({ course_id: id, media_id, position: idx, active: true }));
+    await db.CourseExtraMedia.bulkCreate(bulk);
+
+    const updated = await db.Course.findByPk(id, { include: [{ model: db.Media, as: 'extra_media', attributes: ['id', 'url', 'alt_text'], through: { attributes: ['position', 'active'] } }] });
+    return res.status(201).json(updated.extra_media || []);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'server error' });
+  }
+};
+
+exports.setExtraMedia = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const items = req.body && Array.isArray(req.body.items) ? req.body.items : null;
+    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ message: 'items must be a non-empty array' });
+
+    const course = await db.Course.findByPk(id);
+    if (!course) return res.status(404).json({ message: 'course not found' });
+
+    // validate items: each must have media_id and optional position
+    const parsed = [];
+    for (const it of items) {
+      const mid = Number(it.media_id);
+      const pos = Number.isInteger(Number(it.position)) ? Number(it.position) : null;
+      if (!Number.isInteger(mid) || mid <= 0) return res.status(400).json({ message: 'each item.media_id must be a positive integer' });
+      parsed.push({ media_id: mid, position: pos === null ? 0 : pos });
+    }
+
+    const uniq = [...new Set(parsed.map(p => p.media_id))];
+    const medias = await db.Media.findAll({ where: { id: uniq, active: true }, attributes: ['id'] });
+    if (medias.length !== uniq.length) return res.status(400).json({ message: 'one or more media_ids are invalid or inactive' });
+
+    // replace relations and set given positions
+    await db.CourseExtraMedia.destroy({ where: { course_id: id } });
+    const bulk = parsed.map(p => ({ course_id: id, media_id: p.media_id, position: p.position, active: true }));
+    await db.CourseExtraMedia.bulkCreate(bulk);
+
+    const updated = await db.Course.findByPk(id, { include: [{ model: db.Media, as: 'extra_media', attributes: ['id', 'url', 'alt_text'], through: { attributes: ['position', 'active'] } }] });
+    return res.json(updated.extra_media || []);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'server error' });
+  }
+};
+
+exports.removeExtraMedia = async (req, res) => {
+  try {
+    const { id, mediaId } = req.params;
+    const course = await db.Course.findByPk(id);
+    if (!course) return res.status(404).json({ message: 'course not found' });
+
+    const deleted = await db.CourseExtraMedia.destroy({ where: { course_id: id, media_id: mediaId } });
+    if (!deleted) return res.status(404).json({ message: 'relation not found' });
+
+    return res.json({ message: 'removed' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'server error' });
+  }
+};

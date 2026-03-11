@@ -33,4 +33,9 @@ router.post('/:id/convenios', authenticate, requireAdmin, controller.addConvenio
 router.put('/:id/convenios/:convId', authenticate, requireAdmin, controller.updateConvenio);
 router.delete('/:id/convenios/:convId', authenticate, requireAdmin, controller.removeConvenio);
 
+// Extra media (imagenes adicionales del curso)
+router.post('/:id/extra-media', authenticate, requireAdmin, controller.addExtraMedia);
+router.put('/:id/extra-media', authenticate, requireAdmin, controller.setExtraMedia);
+router.delete('/:id/extra-media/:mediaId', authenticate, requireAdmin, controller.removeExtraMedia);
+
 module.exports = router;
