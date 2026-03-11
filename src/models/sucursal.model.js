@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   Sucursal.associate = function(models) {
     Sucursal.hasMany(models.User, { foreignKey: 'sucursal_id', as: 'users' });
     Sucursal.hasMany(models.Course, { foreignKey: 'sucursal_id', as: 'coursesPrincipal' });
+    Sucursal.hasMany(models.SocialLink, { foreignKey: 'sucursal_id', as: 'socialLinks' });
     Sucursal.belongsToMany(models.Course, { through: models.CourseSucursal, foreignKey: 'sucursal_id', otherKey: 'course_id', as: 'courses' });
   };
 
