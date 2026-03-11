@@ -26,7 +26,8 @@ exports.list = async (req, res) => {
 
     const items = await db.SocialLink.findAll({
       where,
-      attributes: ['id', 'network', 'value', 'sucursal_id', 'active']
+      attributes: ['id', 'network', 'value', 'active'],
+      include: [{ model: db.Sucursal, as: 'sucursal', attributes: ['id', 'nombre', 'ciudad', 'direccion', 'telefono', 'email', 'active'] }]
     });
     return res.json(items);
   } catch (err) {
@@ -38,7 +39,7 @@ exports.list = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const item = await db.SocialLink.findByPk(id, { attributes: ['id', 'network', 'value', 'sucursal_id', 'active'] });
+    const item = await db.SocialLink.findByPk(id, { attributes: ['id', 'network', 'value', 'active'], include: [{ model: db.Sucursal, as: 'sucursal', attributes: ['id', 'nombre', 'ciudad', 'direccion', 'telefono', 'email', 'active'] }] });
     if (!item) return res.status(404).json({ message: 'not found' });
 
     const sucursalId = toPositiveInt(req.query.sucursal_id);
