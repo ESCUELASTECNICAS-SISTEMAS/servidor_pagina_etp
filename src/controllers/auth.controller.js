@@ -31,6 +31,15 @@ exports.login = async (req, res) => {
     const payload = { id: user.id, email: user.email, role: user.role, sucursal_id: user.sucursal_id || null };
     const token = jwt.sign(payload, JWT_SECRET || 'dev-secret', { expiresIn: '24h' });
 
+    // Register login event (non-blocking for response)
+    try {
+      if (user && user.id) {
+        await db.LoginEvent.create({ user_id: user.id, sucursal_id: user.sucursal_id || null });
+      }
+    } catch (e) {
+      console.error('failed to record login event', e);
+    }
+
     return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, sucursal_id: user.sucursal_id || null } });
   } catch (err) {
     console.error(err);
