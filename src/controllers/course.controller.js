@@ -6,6 +6,7 @@ const getIncludes = () => {
     { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Media, as: 'horarios', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Media, as: 'extraImage', attributes: ['id', 'url', 'alt_text'] },
+    { model: db.Media, as: 'extra_media', attributes: ['id', 'url', 'alt_text'], through: { attributes: ['position', 'active'] }, required: false },
     { model: db.Sucursal, as: 'sucursales', attributes: ['id', 'nombre', 'ciudad', 'direccion', 'telefono', 'email', 'active'], through: { attributes: ['id', 'active', 'created_at'] }, required: false },
     { model: db.Docente, as: 'docentes', attributes: ['id', 'nombre', 'especialidad', 'bio', 'email'], through: { attributes: ['rol'] }, include: [{ model: db.Media, as: 'foto', attributes: ['id', 'url', 'alt_text'] }] },
     { model: db.Certificado, as: 'certificados', attributes: ['id', 'titulo', 'descripcion', 'institucion_emisora', 'orden', 'active'], required: false },
