@@ -3,6 +3,7 @@ module.exports = (sequelize, DataTypes) => {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     url: { type: DataTypes.STRING(1024), allowNull: false },
     alt_text: { type: DataTypes.STRING(255) },
+    category: { type: DataTypes.STRING(50), allowNull: true },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
   }, {
