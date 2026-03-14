@@ -41,6 +41,7 @@ const sucursalRoutes = require('./routes/sucursal.routes');
 const debugRoutes = require('./routes/debug.routes');
 const loginEventRoutes = require('./routes/login_event.routes');
 const tipRoutes = require('./routes/tip.routes');
+const nosotrosRoutes = require('./routes/nosotros.routes');
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/social-links', socialRoutes);
@@ -54,6 +55,7 @@ app.use('/sucursales', sucursalRoutes);
 app.use('/debug', debugRoutes);
 app.use('/admin/login-events', loginEventRoutes);
 app.use('/tips', tipRoutes);
+app.use('/nosotros', nosotrosRoutes);
 
 app.get('/', (req, res) => res.json({ ok: true }));
 
