@@ -43,6 +43,7 @@ const loginEventRoutes = require('./routes/login_event.routes');
 const tipRoutes = require('./routes/tip.routes');
 const nosotrosRoutes = require('./routes/nosotros.routes');
 const preInscripcionRoutes = require('./routes/pre_inscripcion.routes');
+const modalidadRoutes = require('./routes/modalidad.routes');
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/social-links', socialRoutes);
@@ -58,6 +59,7 @@ app.use('/admin/login-events', loginEventRoutes);
 app.use('/tips', tipRoutes);
 app.use('/nosotros', nosotrosRoutes);
 app.use('/pre-inscripciones', preInscripcionRoutes);
+app.use('/modalidades', modalidadRoutes);
 
 app.get('/', (req, res) => res.json({ ok: true }));
 
