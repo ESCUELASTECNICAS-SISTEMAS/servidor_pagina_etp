@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
     author_id: { type: DataTypes.INTEGER },
     status: { type: DataTypes.ENUM('draft','published','archived'), defaultValue: 'draft' },
     published_at: { type: DataTypes.DATE },
-    featured_media_id: { type: DataTypes.INTEGER },
+    featured_media_urls: { type: DataTypes.JSON },
     views: { type: DataTypes.INTEGER, defaultValue: 0 },
     tags: { type: DataTypes.JSON },
     allow_comments: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Blog.associate = function(models) {
     Blog.belongsTo(models.User, { foreignKey: 'author_id', as: 'author' });
-    Blog.belongsTo(models.Media, { foreignKey: 'featured_media_id', as: 'featured_media' });
+    // featured_media_id eliminado, relación ya no aplica
     Blog.belongsToMany(models.Media, { through: 'blog_media', foreignKey: 'blog_id', otherKey: 'media_id', as: 'media' });
   };
 

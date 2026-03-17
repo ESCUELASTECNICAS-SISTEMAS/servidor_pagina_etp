@@ -58,11 +58,18 @@ async function ensureMediaRecords(mediaArray = []) {
 
 exports.create = async (req, res) => {
   try {
-    const { title, slug, summary, content, author_id, status, published_at, featured_media_id, tags, allow_comments, meta_title, meta_description, canonical_url, media } = req.body;
+    const { title, slug, summary, content, author_id, status, published_at, featured_media_urls, tags, allow_comments, meta_title, meta_description, canonical_url, media } = req.body;
     if (!title) return res.status(400).json({ message: 'title required' });
 
+    // Validar featured_media_urls
+    let urls = null;
+    if (Array.isArray(featured_media_urls)) {
+      if (featured_media_urls.length > 3) return res.status(400).json({ message: 'Máximo 3 imágenes permitidas en featured_media_urls' });
+      urls = featured_media_urls;
+    }
+
     const finalSlug = slug || slugify(title, { lower: true, strict: true });
-    const item = await db.Blog.create({ title, slug: finalSlug, summary, content, author_id: author_id || null, status: status || 'draft', published_at: published_at || null, featured_media_id: featured_media_id || null, tags: tags || null, allow_comments: !!allow_comments, meta_title: meta_title || null, meta_description: meta_description || null, canonical_url: canonical_url || null });
+    const item = await db.Blog.create({ title, slug: finalSlug, summary, content, author_id: author_id || null, status: status || 'draft', published_at: published_at || null, featured_media_urls: urls, tags: tags || null, allow_comments: !!allow_comments, meta_title: meta_title || null, meta_description: meta_description || null, canonical_url: canonical_url || null });
 
     if (Array.isArray(media) && media.length) {
       const mediaRecords = await ensureMediaRecords(media);
@@ -91,7 +98,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, slug, summary, content, author_id, status, published_at, featured_media_id, tags, allow_comments, meta_title, meta_description, canonical_url, media } = req.body;
+    const { title, slug, summary, content, author_id, status, published_at, featured_media_urls, tags, allow_comments, meta_title, meta_description, canonical_url, media } = req.body;
     const item = await db.Blog.findByPk(id);
     if (!item) return res.status(404).json({ message: 'not found' });
     const oldStatus = item.status;
@@ -104,7 +111,12 @@ exports.update = async (req, res) => {
     if (typeof author_id !== 'undefined') updates.author_id = author_id;
     if (typeof status !== 'undefined') updates.status = status;
     if (typeof published_at !== 'undefined') updates.published_at = published_at;
-    if (typeof featured_media_id !== 'undefined') updates.featured_media_id = featured_media_id;
+    if (typeof featured_media_urls !== 'undefined') {
+      if (Array.isArray(featured_media_urls) && featured_media_urls.length > 3) {
+        return res.status(400).json({ message: 'Máximo 3 imágenes permitidas en featured_media_urls' });
+      }
+      updates.featured_media_urls = featured_media_urls;
+    }
     if (typeof tags !== 'undefined') updates.tags = tags;
     if (typeof allow_comments !== 'undefined') updates.allow_comments = !!allow_comments;
     if (typeof meta_title !== 'undefined') updates.meta_title = meta_title;
@@ -117,7 +129,7 @@ exports.update = async (req, res) => {
       // remove existing associations then add provided ones in order
       await item.setMedia([]);
       const mediaRecords = await ensureMediaRecords(media);
-      for (const m of mediaRecords) {
+      for (const m of mediaRecords) { 
         await item.addMedia(m.instance, { through: { position: m.position || null, caption: m.caption || null } });
       }
     }
