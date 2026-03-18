@@ -39,8 +39,9 @@ module.exports = (sequelize) => {
     },
     updated_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-      field: 'updated_at'
+      allowNull: false,
+      field: 'updated_at',
+      defaultValue: DataTypes.NOW
     }
   }, {
     tableName: 'blog_media',
