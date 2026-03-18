@@ -138,7 +138,7 @@ exports.update = async (req, res) => {
       if (typeof updates.status !== 'undefined' && updates.status === 'published' && oldStatus !== 'published') {
         const users = await db.User.findAll({ where: { active: true }, attributes: ['email'] });
         const emails = users.map(u => u.email).filter(Boolean);
-        if (emails.length) await mailer.sendNewsNotification(emails, item);
+        if (emails.length) await mailer.sendBlogNotification(emails, item);
       }
     } catch (mailErr) {
       console.error('failed to send publication emails', mailErr);
