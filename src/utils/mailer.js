@@ -71,8 +71,9 @@ if (transporter) {
 async function sendBlogNotification(recipients, blog) {
   if (!recipients || recipients.length === 0) return;
   const subject = `Nuevo blog: ${blog.title}`;
-  const text = `${blog.summary || ''}\n\nVer el blog: ${PUBLIC_URL}/blog/${blog.id}`;
-  const html = `<h1>${blog.title}</h1><p>${blog.summary || ''}</p><p><a href="${PUBLIC_URL}/blog/${blog.id}">Ver blog</a></p>`;
+  const blogUrl = `${PUBLIC_URL}/blog/${blog.slug}`;
+  const text = `${blog.summary || ''}\n\nVer el blog: ${blogUrl}`;
+  const html = `<h1>${blog.title}</h1><p>${blog.summary || ''}</p><p><a href="${blogUrl}">Ver blog</a></p>`;
 
   if (brevoClient) {
     try {
