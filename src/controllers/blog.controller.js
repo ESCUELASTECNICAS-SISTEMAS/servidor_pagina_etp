@@ -10,7 +10,7 @@ exports.list = async (req, res) => {
 
     const items = await db.Blog.findAll({
       where,
-      attributes: ['id','title','slug','summary','status','published_at','views','created_at','updated_at'],
+      attributes: ['id','title','slug','summary','status','published_at','views','created_at','updated_at','featured_media_urls'],
         include: [
           { model: db.Media, as: 'media', attributes: ['id','url','alt_text','title','thumbnail_url'] },
           { model: db.User, as: 'author', attributes: ['id','name','email'] }
