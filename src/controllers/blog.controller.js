@@ -11,10 +11,10 @@ exports.list = async (req, res) => {
     const items = await db.Blog.findAll({
       where,
       attributes: ['id','title','slug','summary','status','published_at','views','created_at','updated_at'],
-      include: [
-        { model: db.Media, as: 'featured_media', attributes: ['id','url','alt_text','title','thumbnail_url'] },
-        { model: db.User, as: 'author', attributes: ['id','name','email'] }
-      ]
+        include: [
+          { model: db.Media, as: 'media', attributes: ['id','url','alt_text','title','thumbnail_url'] },
+          { model: db.User, as: 'author', attributes: ['id','name','email'] }
+        ]
     });
     return res.json(items);
   } catch (err) {
@@ -28,7 +28,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const item = await db.Blog.findByPk(id, {
       include: [
-        { model: db.Media, as: 'featured_media', attributes: ['id','url','alt_text','title','thumbnail_url'] },
+        { model: db.Media, as: 'media', attributes: ['id','url','alt_text','title','thumbnail_url'] },
         { model: db.User, as: 'author', attributes: ['id','name','email'] },
         { model: db.Media, as: 'media', through: { attributes: ['position','caption'] }, attributes: ['id','url','type','title','thumbnail_url'] }
       ]
