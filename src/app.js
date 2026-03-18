@@ -44,6 +44,7 @@ const tipRoutes = require('./routes/tip.routes');
 const nosotrosRoutes = require('./routes/nosotros.routes');
 const preInscripcionRoutes = require('./routes/pre_inscripcion.routes');
 const modalidadRoutes = require('./routes/modalidad.routes');
+const blogRoutes = require('./routes/blog.routes');
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/social-links', socialRoutes);
@@ -60,6 +61,7 @@ app.use('/tips', tipRoutes);
 app.use('/nosotros', nosotrosRoutes);
 app.use('/pre-inscripciones', preInscripcionRoutes);
 app.use('/modalidades', modalidadRoutes);
+app.use('/blogs', blogRoutes);
 
 app.get('/', (req, res) => res.json({ ok: true }));
 
