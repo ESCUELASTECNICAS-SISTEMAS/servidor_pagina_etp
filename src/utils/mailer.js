@@ -53,6 +53,7 @@ if (SMTP_HOST && SMTP_USER) {
 }
 
 // Diagnostic: log transporter status and attempt a verify when possible
+
 if (transporter) {
   const maskedUser = SMTP_USER ? SMTP_USER.replace(/(.{2}).+(@.+)/, '$1***$2') : 'unset';
   console.log('Mailer configured with host:', SMTP_HOST, 'port:', SMTP_PORT || '(default 587)', 'user:', maskedUser);
@@ -64,6 +65,61 @@ if (transporter) {
   });
 } else {
   console.log('Mailer not configured (missing SMTP_HOST or SMTP_USER)');
+}
+
+// --- Blog notification function ---
+async function sendBlogNotification(recipients, blog) {
+  if (!recipients || recipients.length === 0) return;
+  const subject = `Nuevo blog: ${blog.title}`;
+  const text = `${blog.summary || ''}\n\nVer el blog: ${PUBLIC_URL}/blog/${blog.id}`;
+  const html = `<h1>${blog.title}</h1><p>${blog.summary || ''}</p><p><a href="${PUBLIC_URL}/blog/${blog.id}">Ver blog</a></p>`;
+
+  if (brevoClient) {
+    try {
+      const to = recipients && recipients.length > 0 ? [{ email: recipients[0] }] : [];
+      const bcc = recipients && recipients.length > 1 ? recipients.slice(1).map(r => ({ email: r })) : [];
+      const payload = {
+        sender: { email: FROM_EMAIL },
+        to,
+        bcc,
+        subject,
+        htmlContent: html,
+        textContent: text
+      };
+      console.log('Mailer: sending blog via Brevo transactional API to', recipients.length, 'recipients');
+      const resp = await brevoClient.post('/smtp/email', payload);
+      console.log('Mailer: Brevo API send status=', resp && resp.status);
+      return resp.data;
+    } catch (apiErr) {
+      console.error('Mailer: Brevo API send error:', apiErr && apiErr.message ? apiErr.message : apiErr);
+      if (apiErr && apiErr.stack) console.error(apiErr.stack);
+    }
+  }
+
+  if (!transporter) {
+    console.log('Mail not configured (no transporter and no Brevo API) - would send to:', recipients);
+    console.log('Subject:', subject);
+    return;
+  }
+
+  const mailOptions = {
+    from: FROM_EMAIL,
+    bcc: recipients,
+    subject,
+    text,
+    html
+  };
+
+  console.log('Mailer: sending blog email to', recipients.length, 'recipients, from:', FROM_EMAIL);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Mailer: sendMail completed, messageId=', info && info.messageId);
+    return info;
+  } catch (sendErr) {
+    console.error('Mailer: sendMail error:', sendErr && sendErr.message ? sendErr.message : sendErr);
+    if (sendErr && sendErr.stack) console.error(sendErr.stack);
+    throw sendErr;
+  }
 }
 
 async function sendNewsNotification(recipients, noticia) {
@@ -176,4 +232,4 @@ async function verifyTransporter() {
   }
 }
 
-module.exports = { sendNewsNotification, verifyTransporter };
+module.exports = { sendNewsNotification, sendBlogNotification, verifyTransporter };
