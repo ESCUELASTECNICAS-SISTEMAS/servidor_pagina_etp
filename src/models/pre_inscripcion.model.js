@@ -11,7 +11,8 @@ module.exports = (sequelize, DataTypes) => {
     sucursal_id: { type: DataTypes.INTEGER, allowNull: false },
     acepta_politicas: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
-    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    atendido: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
   }, {
     tableName: 'pre_inscripciones',
     timestamps: false

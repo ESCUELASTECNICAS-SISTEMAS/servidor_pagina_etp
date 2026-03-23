@@ -12,6 +12,10 @@ exports.list = async (req, res) => {
     if (req.query.course_id) where.course_id = parseInt(req.query.course_id, 10);
     if (req.query.sucursal_id) where.sucursal_id = parseInt(req.query.sucursal_id, 10);
     if (req.query.modalidad_id) where.modalidad_id = parseInt(req.query.modalidad_id, 10);
+    if (typeof req.query.atendido !== 'undefined') {
+      const v = req.query.atendido.toString().toLowerCase();
+      where.atendido = (v === 'true' || v === '1');
+    }
 
     const items = await db.PreInscripcion.findAll({
       where,
@@ -79,6 +83,7 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'acepta_politicas must be true' });
     }
 
+
     const payload = {
       nombre,
       apellido,
@@ -88,7 +93,8 @@ exports.create = async (req, res) => {
       modalidad_id,
       course_id,
       sucursal_id,
-      acepta_politicas: true
+      acepta_politicas: true,
+      atendido: req.body.atendido === true || req.body.atendido === 'true' || req.body.atendido === 1 || req.body.atendido === '1' ? true : false
     };
 
     const item = await db.PreInscripcion.create(payload);
@@ -116,7 +122,8 @@ exports.update = async (req, res) => {
       course_id,
       sucursal_id,
       acepta_politicas,
-      active
+      active,
+      atendido
     } = req.body;
 
     const updates = {};
@@ -129,7 +136,9 @@ exports.update = async (req, res) => {
     if (typeof course_id !== 'undefined') updates.course_id = course_id;
     if (typeof sucursal_id !== 'undefined') updates.sucursal_id = sucursal_id;
     if (typeof acepta_politicas !== 'undefined') updates.acepta_politicas = !!acepta_politicas;
+
     if (typeof active !== 'undefined') updates.active = !!active;
+    if (typeof atendido !== 'undefined') updates.atendido = !!atendido;
 
     await item.update(updates);
 
