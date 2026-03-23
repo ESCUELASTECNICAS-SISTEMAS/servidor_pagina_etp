@@ -1,5 +1,6 @@
 const db = require('../models');
 const bcrypt = require('bcrypt');
+const { getIO } = require('../utils/socket');
 
 const toOptionalPositiveInt = (v) => {
   if (typeof v === 'undefined' || v === null) return undefined;
@@ -95,6 +96,23 @@ exports.create = async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
     const user = await db.User.create({ name, email, password_hash, role, sucursal_id: typeof sucursal_id === 'undefined' ? null : sucursal_id });
+
+    // Emitir evento de nuevo usuario registrado solo a administradores
+    try {
+      const io = getIO();
+      io.emit('nuevo_usuario', {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        sucursal_id: user.sucursal_id || null,
+        created_at: user.created_at,
+        active: user.active
+      });
+    } catch (e) {
+      console.error('No se pudo emitir evento de nuevo usuario:', e.message);
+    }
+
     return res.status(201).json({ id: user.id, name: user.name, email: user.email, role: user.role, sucursal_id: user.sucursal_id || null, created_at: user.created_at, active: user.active });
   } catch (err) {
     console.error(err);
