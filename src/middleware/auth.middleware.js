@@ -25,7 +25,9 @@ function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ message: 'not authenticated' });
   // accept english 'admin' and spanish 'administrador' (case-insensitive)
   const role = (req.user.role || '').toString().toLowerCase();
-  if (!role.includes('admin')) return res.status(403).json({ message: 'admin required' });
+  if (!(role.includes('admin') || role.includes('administrador'))) {
+    return res.status(403).json({ message: 'admin or administrador required' });
+  }
   return next();
 }
 
