@@ -15,7 +15,31 @@ exports.list = async (req, res) => {
     }
 
     const items = await db.Noticia.findAll({ where, attributes: ['id', 'title', 'summary', 'featured_media_id', 'published', 'published_at', 'active', 'created_at'] });
-    return res.json(items);
+    // Ordenar por fecha de publicación descendente, luego por creación descendente
+    items.sort((a, b) => {
+      // Si ambos tienen published_at, ordenar por published_at
+      if (a.published_at && b.published_at) {
+        return new Date(b.published_at) - new Date(a.published_at);
+      }
+      // Si solo uno tiene published_at, ese va primero
+      if (a.published_at) return -1;
+      if (b.published_at) return 1;
+      // Si ninguno tiene published_at, ordenar por created_at
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    // Formatear y estructurar el JSON de salida
+    const formatted = items.map(n => ({
+      id: n.id,
+      title: n.title,
+      summary: n.summary,
+      featured_media_id: n.featured_media_id || null,
+      published: n.published,
+      published_at: n.published_at ? new Date(n.published_at).toISOString() : null,
+      active: n.active,
+      created_at: n.created_at ? new Date(n.created_at).toISOString() : null
+    }));
+    return res.json(formatted);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'server error' });
