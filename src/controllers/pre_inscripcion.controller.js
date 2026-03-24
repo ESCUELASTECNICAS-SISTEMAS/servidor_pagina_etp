@@ -57,6 +57,8 @@ exports.getById = async (req, res) => {
   }
 };
 
+const { getIO } = require('../utils/socket');
+
 exports.create = async (req, res) => {
   try {
     const {
@@ -83,7 +85,6 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'acepta_politicas must be true' });
     }
 
-
     const payload = {
       nombre,
       apellido,
@@ -98,6 +99,28 @@ exports.create = async (req, res) => {
     };
 
     const item = await db.PreInscripcion.create(payload);
+
+    // Emitir evento de nueva preinscripción
+    try {
+      const io = getIO();
+      io.emit('nueva_preinscripcion', {
+        id: item.id,
+        nombre: item.nombre,
+        apellido: item.apellido,
+        celular: item.celular,
+        dni: item.dni,
+        email: item.email,
+        modalidad_id: item.modalidad_id,
+        course_id: item.course_id,
+        sucursal_id: item.sucursal_id,
+        acepta_politicas: item.acepta_politicas,
+        atendido: item.atendido,
+        created_at: item.created_at,
+        active: item.active
+      });
+    } catch (e) {
+      console.error('No se pudo emitir evento de nueva preinscripción:', e.message);
+    }
 
     return res.status(201).json(item);
   } catch (err) {
