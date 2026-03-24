@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../models');
+const { getIO } = require('../utils/socket');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -70,6 +71,21 @@ exports.register = async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
     const user = await db.User.create({ name: name || null, email, password_hash, role: role || 'cliente', sucursal_id: typeof sucursal_id === 'undefined' ? null : sucursal_id });
+
+    try {
+      const io = getIO();
+      io.emit('nuevo_usuario', {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        sucursal_id: user.sucursal_id || null,
+        created_at: user.created_at,
+        active: user.active
+      });
+    } catch (e) {
+      console.error('No se pudo emitir evento de nuevo usuario:', e.message);
+    }
 
     const payload = { id: user.id, email: user.email, role: user.role, sucursal_id: user.sucursal_id || null };
     const token = jwt.sign(payload, JWT_SECRET || 'dev-secret', { expiresIn: '24h' });
