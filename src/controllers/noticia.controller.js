@@ -64,7 +64,24 @@ exports.getById = async (req, res) => {
     return res.status(500).json({ message: 'server error' });
   }
 };
-
+// Obtener noticia por slug
+exports.getBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const item = await db.Noticia.findOne({
+      where: { slug },
+      attributes: ['id', 'title', 'summary', 'featured_media_id', 'published', 'published_at', 'author', 'slug', 'category', 'tags', 'active', 'created_at']
+    });
+    if (!item) return res.status(404).json({ message: 'not found' });
+    if (item.active === false && !(req.query.include_inactive && req.query.include_inactive === 'true')) {
+      return res.status(404).json({ message: 'not found' });
+    }
+    return res.json(item);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'server error' });
+  }
+};
 exports.create = async (req, res) => {
   try {
     const { title, summary, featured_media_id, published, published_at, author, slug, category, tags } = req.body;

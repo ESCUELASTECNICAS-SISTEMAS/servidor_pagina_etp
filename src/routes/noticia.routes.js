@@ -4,6 +4,7 @@ const controller = require('../controllers/noticia.controller');
 
 router.get('/', controller.list);
 router.get('/:id', controller.getById);
+router.get('/slug/:slug', controller.getBySlug);
 router.post('/', controller.create);
 router.put('/:id', controller.update);
 router.delete('/:id', controller.remove);
