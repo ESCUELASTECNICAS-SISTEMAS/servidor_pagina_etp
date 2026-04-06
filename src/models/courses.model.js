@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     matricula: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     modulos: { type: DataTypes.JSON },
     sucursal_id: { type: DataTypes.INTEGER },
-    horarios_media_id: { type: DataTypes.INTEGER },
+    horarios_media_url: { type: DataTypes.STRING(512) },
     extra_media_id: { type: DataTypes.INTEGER },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
@@ -40,7 +40,6 @@ module.exports = (sequelize, DataTypes) => {
 
   Course.associate = function(models) {
     Course.belongsTo(models.Media, { foreignKey: 'thumbnail_media_id', as: 'thumbnail' });
-    Course.belongsTo(models.Media, { foreignKey: 'horarios_media_id', as: 'horarios' });
     Course.belongsTo(models.Media, { foreignKey: 'extra_media_id', as: 'extraImage' });
     Course.belongsToMany(models.Media, { through: models.CourseExtraMedia, foreignKey: 'course_id', otherKey: 'media_id', as: 'extra_media' });
     Course.belongsTo(models.Sucursal, { foreignKey: 'sucursal_id', as: 'sucursalPrincipal' });

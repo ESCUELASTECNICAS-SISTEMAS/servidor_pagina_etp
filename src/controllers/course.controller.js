@@ -4,7 +4,6 @@ const db = require('../models');
 const getIncludes = () => {
   return [
     { model: db.Media, as: 'thumbnail', attributes: ['id', 'url', 'alt_text'] },
-    { model: db.Media, as: 'horarios', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Media, as: 'extraImage', attributes: ['id', 'url', 'alt_text'] },
     { model: db.Media, as: 'extra_media', attributes: ['id', 'url', 'alt_text'], through: { attributes: ['position', 'active'] }, required: false },
     { model: db.Sucursal, as: 'sucursales', attributes: ['id', 'nombre', 'ciudad', 'direccion', 'telefono', 'email', 'active'], through: { attributes: ['id', 'active', 'created_at'] }, required: false },
@@ -136,7 +135,7 @@ exports.list = async (req, res) => {
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const courses = await db.Course.findAll({
       where,
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'thumbnail_media_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'thumbnail_media_id', 'horarios_media_url', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     const out = courses.map(c => {
@@ -160,7 +159,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
     const includeInactive = req.query.include_inactive && req.query.include_inactive.toString().toLowerCase() === 'true';
     const course = await db.Course.findByPk(id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'horarios_media_url', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes(includeInactive)
     });
     if (!course) return res.status(404).json({ message: 'not found' });
@@ -240,7 +239,7 @@ exports.create = async (req, res) => {
     if (typeof description !== 'undefined') payload.description = description;
     payload.type = type;
     if (typeof body.thumbnail_media_id !== 'undefined') payload.thumbnail_media_id = body.thumbnail_media_id;
-    if (typeof body.horarios_media_id !== 'undefined') payload.horarios_media_id = body.horarios_media_id;
+    if (typeof body.horarios_media_url !== 'undefined') payload.horarios_media_url = body.horarios_media_url;
     const extraMediaId = toOptionalPositiveInt(body.extra_media_id);
     if (typeof extraMediaId !== 'undefined') payload.extra_media_id = extraMediaId;
     if (typeof slug !== 'undefined') payload.slug = slug;
@@ -295,7 +294,7 @@ exports.create = async (req, res) => {
       await syncCourseSucursales(course.id, sucursal_ids);
     }
     const created = await db.Course.findByPk(course.id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'sucursal_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'sucursal_id', 'horarios_media_url', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes()
     });
     return res.status(201).json(created);
@@ -313,7 +312,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subtitle, description, type, thumbnail_media_id, horarios_media_id, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
+    const { title, subtitle, description, type, thumbnail_media_id, horarios_media_url, slug, published, active, hours, duration, grado, registro, perfil_egresado, mision, vision, modalidad, razones_para_estudiar, publico_objetivo } = req.body;
     const sucursal_ids = parseSucursalIds(req.body.sucursal_ids);
     const is_virtual = parseBooleanish(req.body.is_virtual);
     const is_presencial = parseBooleanish(req.body.is_presencial);
@@ -348,7 +347,7 @@ exports.update = async (req, res) => {
     if (typeof description !== 'undefined') updates.description = description;
     if (typeof type !== 'undefined') updates.type = type;
     if (typeof thumbnail_media_id !== 'undefined') updates.thumbnail_media_id = thumbnail_media_id;
-    if (typeof horarios_media_id !== 'undefined') updates.horarios_media_id = horarios_media_id;
+    if (typeof horarios_media_url !== 'undefined') updates.horarios_media_url = horarios_media_url;
     const hasExtraMediaInput = Object.prototype.hasOwnProperty.call(req.body, 'extra_media_id');
     if (hasExtraMediaInput) {
       const extraMediaId = toOptionalPositiveInt(req.body.extra_media_id);
@@ -426,7 +425,7 @@ exports.update = async (req, res) => {
       await syncCourseSucursales(course.id, sucursal_ids);
     }
     const updated = await db.Course.findByPk(course.id, {
-      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'sucursal_id', 'horarios_media_id', 'extra_media_id', 'active', 'created_at'],
+      attributes: ['id', 'title', 'subtitle', 'description', 'type', 'slug', 'published', 'thumbnail_media_id', 'hours', 'duration', 'grado', 'registro', 'perfil_egresado', 'mision', 'vision', 'modalidad', 'is_virtual', 'is_presencial', 'temario', 'razones_para_estudiar', 'publico_objetivo', 'precio', 'descuento', 'oferta', 'matricula', 'modulos', 'sucursal_id', 'horarios_media_url', 'extra_media_id', 'active', 'created_at'],
       include: getIncludes()
     });
     return res.json(updated);
